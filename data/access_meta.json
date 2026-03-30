@@ -1,0 +1,198 @@
+{
+  "sgg_col": "sgg_cd",
+  "std_method": "minmax",
+  "facilities": [
+    {
+      "idx": 0,
+      "col": "health",
+      "sector": "보건의료",
+      "name": "보건기관",
+      "threshold": 5.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\110.2 보건기관(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 1,
+      "col": "clinic",
+      "sector": "보건의료",
+      "name": "의원",
+      "threshold": 1.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\116.2 의원(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 2,
+      "col": "hosp",
+      "sector": "보건의료",
+      "name": "종합병원",
+      "threshold": 5.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\128.2 종합병원(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 3,
+      "col": "daycar",
+      "sector": "교육학습",
+      "name": "어린이집",
+      "threshold": 1.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\13.2 어린이집(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 4,
+      "col": "emerg",
+      "sector": "안전치안",
+      "name": "응급의료시설",
+      "threshold": 5.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\134.2 응급의료시설(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 5,
+      "col": "pharma",
+      "sector": "보건의료",
+      "name": "약국",
+      "threshold": 1.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\144.2 약국(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 6,
+      "col": "police",
+      "sector": "안전치안",
+      "name": "경찰서",
+      "threshold": 5.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\150.2 경찰서(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 7,
+      "col": "fire",
+      "sector": "안전치안",
+      "name": "소방서",
+      "threshold": 5.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\156.2 소방서(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 8,
+      "col": "eqshlt",
+      "sector": "안전치안",
+      "name": "지진옥외대피소",
+      "threshold": 1.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\162.2 지진옥외대피소(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 9,
+      "col": "kinder",
+      "sector": "교육학습",
+      "name": "유치원",
+      "threshold": 1.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\17.2 유치원(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 10,
+      "col": "elem",
+      "sector": "교육학습",
+      "name": "초등학교",
+      "threshold": 1.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\25.2 초등학교(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 11,
+      "col": "allday",
+      "sector": "돌봄복지",
+      "name": "온종일 돌봄센터",
+      "threshold": 1.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\29.2 온종일 돌봄센터(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 12,
+      "col": "welfar",
+      "sector": "돌봄복지",
+      "name": "종합사회복지관",
+      "threshold": 5.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\33.2 종합사회복지관(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 13,
+      "col": "snrctr",
+      "sector": "돌봄복지",
+      "name": "경로당",
+      "threshold": 1.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\41.2 경로당(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 14,
+      "col": "snrlei",
+      "sector": "돌봄복지",
+      "name": "노인여가복지시설",
+      "threshold": 5.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\49.2 노인여가복지시설(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 15,
+      "col": "sports",
+      "sector": "체육문화",
+      "name": "공공체육시설",
+      "threshold": 5.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\53.2 공공체육시설(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 16,
+      "col": "smlib",
+      "sector": "교육학습",
+      "name": "작은도서관",
+      "threshold": 1.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\65.2 작은도서관(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 17,
+      "col": "cultur",
+      "sector": "체육문화",
+      "name": "공연문화시설",
+      "threshold": 5.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\69.2 공연문화시설(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 18,
+      "col": "lfpark",
+      "sector": "체육문화",
+      "name": "생활권공원",
+      "threshold": 1.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\80.2 생활권공원(시군구격자) 접근성.shp"
+    },
+    {
+      "idx": 19,
+      "col": "thpark",
+      "sector": "체육문화",
+      "name": "주제공원",
+      "threshold": 5.0,
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/access\\84.2 주제공원(시군구격자) 접근성.shp"
+    }
+  ],
+  "sectors": [
+    {
+      "col": "med",
+      "name": "보건의료",
+      "n_fac": 4,
+      "half_thr": 2
+    },
+    {
+      "col": "edu",
+      "name": "교육학습",
+      "n_fac": 4,
+      "half_thr": 2
+    },
+    {
+      "col": "safe",
+      "name": "안전치안",
+      "n_fac": 4,
+      "half_thr": 2
+    },
+    {
+      "col": "care",
+      "name": "돌봄복지",
+      "n_fac": 4,
+      "half_thr": 2
+    },
+    {
+      "col": "cult",
+      "name": "체육문화",
+      "n_fac": 4,
+      "half_thr": 2
+    }
+  ]
+}
