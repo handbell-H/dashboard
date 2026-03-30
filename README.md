@@ -15,4 +15,4 @@
 
 ## 기술 스택
 
-`Python` `QGIS' 'Claude Code' 짜스
+`Python`, `QGIS', 'Claude Code' 짜스
