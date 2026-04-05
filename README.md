@@ -11,6 +11,7 @@
 | 폴더 | 내용 |
 |------|------|
 | [monitoring_living_infra_total_dashboard_v1](./monitoring_living_infra_total_dashboard_v1/) | 생활인프라 접근성·공급수준·서비스인구 종합 모니터링 (시군구 단위) |
+| [monitoring_living_infra_total_dashboard_v2](./monitoring_living_infra_total_dashboard_v2/) | v1 + 지도 시도 바로가기 버튼·클릭 줌인, 순위 비교 단계적 선택 |
 
 ---
 

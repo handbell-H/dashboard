@@ -1,0 +1,188 @@
+{
+  "sgg_col": "sgg_cd",
+  "std_method": "tscore",
+  "facilities": [
+    {
+      "idx": 0,
+      "col": "health",
+      "sector": "보건의료",
+      "name": "보건기관",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\112.4 보건기관(시군구) 서비스권역 내 인구비율(5.0km).shp",
+      "log_transform": "reflected_log10"
+    },
+    {
+      "idx": 1,
+      "col": "clinic",
+      "sector": "보건의료",
+      "name": "의원",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\118.7 의원(시군구) 서비스권역 내 인구비율(1.0km).shp",
+      "log_transform": "reflected_log10"
+    },
+    {
+      "idx": 2,
+      "col": "hosp",
+      "sector": "보건의료",
+      "name": "종합병원",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\130.4 종합병원(시군구) 서비스권역 내 인구비율(5.0km).shp",
+      "log_transform": "reflected_log10"
+    },
+    {
+      "idx": 3,
+      "col": "emerg",
+      "sector": "안전치안",
+      "name": "응급의료시설",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\136.4 응급의료시설(시군구) 서비스권역 내 인구비율(5.0km).shp",
+      "log_transform": "reflected_log10"
+    },
+    {
+      "idx": 4,
+      "col": "pharma",
+      "sector": "보건의료",
+      "name": "약국",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\146.7 약국(시군구) 서비스권역 내 인구비율(1.0km).shp",
+      "log_transform": "none"
+    },
+    {
+      "idx": 5,
+      "col": "daycar",
+      "sector": "교육학습",
+      "name": "어린이집",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\15.7 어린이집(시군구) 서비스권역 내 영유아인구비율(1.0km).shp",
+      "log_transform": "reflected_ln"
+    },
+    {
+      "idx": 6,
+      "col": "police",
+      "sector": "안전치안",
+      "name": "경찰서",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\152.7 경찰서(시군구) 골든타임권역 내 인구비율(3.0km).shp",
+      "log_transform": "none"
+    },
+    {
+      "idx": 7,
+      "col": "fire",
+      "sector": "안전치안",
+      "name": "소방서",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\158.7 소방서(시군구) 골든타임권역 내 인구비율(3.0km).shp",
+      "log_transform": "none"
+    },
+    {
+      "idx": 8,
+      "col": "eqshlt",
+      "sector": "안전치안",
+      "name": "지진옥외대피소",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\164.7 지진옥외대피소(시군구) 서비스권역 내 인구비율(1.0km).shp",
+      "log_transform": "none"
+    },
+    {
+      "idx": 9,
+      "col": "kinder",
+      "sector": "교육학습",
+      "name": "유치원",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\19.7 유치원(시군구) 서비스권역 내 영유아인구비율(1.0km).shp",
+      "log_transform": "none"
+    },
+    {
+      "idx": 10,
+      "col": "elem",
+      "sector": "교육학습",
+      "name": "초등학교",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\27.7 초등학교(시군구) 서비스권역 내 초등학령인구비율(1.0km).shp",
+      "log_transform": "none"
+    },
+    {
+      "idx": 11,
+      "col": "allday",
+      "sector": "돌봄복지",
+      "name": "온종일 돌봄센터",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\31.7 온종일 돌봄센터(시군구) 서비스권역 내 초등학령인구비율(1.0km).shp",
+      "log_transform": "none"
+    },
+    {
+      "idx": 12,
+      "col": "welfar",
+      "sector": "돌봄복지",
+      "name": "종합사회복지관",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\35.4 종합사회복지관(시군구) 서비스권역 내 인구비율(5.0km).shp",
+      "log_transform": "reflected_log10"
+    },
+    {
+      "idx": 13,
+      "col": "snrctr",
+      "sector": "돌봄복지",
+      "name": "경로당",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\43.7 경로당(시군구) 서비스권역 내 고령인구비율(1.0km).shp",
+      "log_transform": "reflected_ln"
+    },
+    {
+      "idx": 14,
+      "col": "snrlei",
+      "sector": "돌봄복지",
+      "name": "노인여가복지시설",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\51.4 노인여가복지시설(시군구) 서비스권역 내 고령인구비율(5.0km).shp",
+      "log_transform": "none"
+    },
+    {
+      "idx": 15,
+      "col": "sports",
+      "sector": "체육문화",
+      "name": "공공체육시설",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\55.7 공공체육시설(시군구) 서비스권역 내 인구비율(1.0km).shp",
+      "log_transform": "ln"
+    },
+    {
+      "idx": 16,
+      "col": "smlib",
+      "sector": "교육학습",
+      "name": "작은도서관",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\67.7 작은도서관(시군구) 서비스권역 내 인구비율(1.0km).shp",
+      "log_transform": "none"
+    },
+    {
+      "idx": 17,
+      "col": "cultur",
+      "sector": "체육문화",
+      "name": "공연문화시설",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\71.4 공연문화시설(시군구) 서비스권역 내 인구비율(5.0km).shp",
+      "log_transform": "none"
+    },
+    {
+      "idx": 18,
+      "col": "lfpark",
+      "sector": "체육문화",
+      "name": "생활권공원",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\82.7 생활권공원(시군구) 서비스권역 내 인구비율(1.0km).shp",
+      "log_transform": "reflected_log10"
+    },
+    {
+      "idx": 19,
+      "col": "thpark",
+      "sector": "체육문화",
+      "name": "주제공원",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/servicepop\\86.4 주제공원(시군구) 서비스권역 내 인구비율(5.0km).shp",
+      "log_transform": "reflected_log10"
+    }
+  ],
+  "sectors": [
+    {
+      "col": "med",
+      "name": "보건의료"
+    },
+    {
+      "col": "safe",
+      "name": "안전치안"
+    },
+    {
+      "col": "edu",
+      "name": "교육학습"
+    },
+    {
+      "col": "care",
+      "name": "돌봄복지"
+    },
+    {
+      "col": "cult",
+      "name": "체육문화"
+    }
+  ]
+}

@@ -1,0 +1,193 @@
+{
+  "sgg_col": "sgg_cd",
+  "std_method": "tscore",
+  "facilities": [
+    {
+      "idx": 0,
+      "col": "daycar",
+      "sector": "교육학습",
+      "name": "교육돌봄_어린이집",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\교육돌봄_어린이집.shp",
+      "log_transform": "ln"
+    },
+    {
+      "idx": 1,
+      "col": "allday",
+      "sector": "돌봄복지",
+      "name": "교육돌봄_온종일돌봄센터",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\교육돌봄_온종일돌봄센터.shp",
+      "log_transform": "ln"
+    },
+    {
+      "idx": 2,
+      "col": "kinder",
+      "sector": "교육학습",
+      "name": "교육돌봄_유치원",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\교육돌봄_유치원.shp",
+      "log_transform": "ln"
+    },
+    {
+      "idx": 3,
+      "col": "smlib",
+      "sector": "교육학습",
+      "name": "교육돌봄_작은도서관",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\교육돌봄_작은도서관.shp",
+      "log_transform": "ln"
+    },
+    {
+      "idx": 4,
+      "col": "elem",
+      "sector": "교육학습",
+      "name": "교육돌봄_초등학교",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\교육돌봄_초등학교.shp",
+      "log_transform": "ln"
+    },
+    {
+      "idx": 5,
+      "col": "snrctr",
+      "sector": "돌봄복지",
+      "name": "노인복지_경로당",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\노인복지_경로당.shp",
+      "log_transform": "ln"
+    },
+    {
+      "idx": 6,
+      "col": "snrlei",
+      "sector": "돌봄복지",
+      "name": "노인복지_노인여가복지시설",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\노인복지_노인여가복지시설.shp",
+      "log_transform": "log10"
+    },
+    {
+      "idx": 7,
+      "col": "welfar",
+      "sector": "돌봄복지",
+      "name": "노인복지_종합사회복지관",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\노인복지_종합사회복지관.shp",
+      "log_transform": "log10"
+    },
+    {
+      "idx": 8,
+      "col": "sports",
+      "sector": "체육문화",
+      "name": "문화여가_공공체육시설",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\문화여가_공공체육시설.shp",
+      "log_transform": "log10"
+    },
+    {
+      "idx": 9,
+      "col": "cultur",
+      "sector": "체육문화",
+      "name": "문화여가_공연문화시설",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\문화여가_공연문화시설.shp",
+      "log_transform": "log10"
+    },
+    {
+      "idx": 10,
+      "col": "lfpar2",
+      "sector": "체육문화",
+      "name": "문화여가_생활공원",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\문화여가_생활공원.shp",
+      "log_transform": "ln"
+    },
+    {
+      "idx": 11,
+      "col": "thpark",
+      "sector": "체육문화",
+      "name": "문화여가_주제공원",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\문화여가_주제공원.shp",
+      "log_transform": "log10"
+    },
+    {
+      "idx": 12,
+      "col": "hosp",
+      "sector": "보건의료",
+      "name": "시설수POI_종합병원",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\시설수POI_종합병원.shp",
+      "log_transform": "log10"
+    },
+    {
+      "idx": 13,
+      "col": "eqshlt",
+      "sector": "안전치안",
+      "name": "시설수POI_지진옥외대피소",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\시설수POI_지진옥외대피소.shp",
+      "log_transform": "ln"
+    },
+    {
+      "idx": 14,
+      "col": "police",
+      "sector": "안전치안",
+      "name": "의료안전_경찰서",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\의료안전_경찰서.shp",
+      "log_transform": "log10"
+    },
+    {
+      "idx": 15,
+      "col": "health",
+      "sector": "보건의료",
+      "name": "의료안전_보건기관",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\의료안전_보건기관.shp",
+      "log_transform": "log10"
+    },
+    {
+      "idx": 16,
+      "col": "fire",
+      "sector": "안전치안",
+      "name": "의료안전_소방서",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\의료안전_소방서.shp",
+      "log_transform": "log10"
+    },
+    {
+      "idx": 17,
+      "col": "pharma",
+      "sector": "보건의료",
+      "name": "의료안전_약국",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\의료안전_약국.shp",
+      "log_transform": "log10"
+    },
+    {
+      "idx": 18,
+      "col": "emerg",
+      "sector": "안전치안",
+      "name": "의료안전_응급의료시설",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\의료안전_응급의료시설.shp",
+      "log_transform": "log10"
+    },
+    {
+      "idx": 19,
+      "col": "clinic",
+      "sector": "보건의료",
+      "name": "의료안전_의원",
+      "filepath": "C:/Users/user/monitoring_qgis_plugin/predata/point\\의료안전_의원.shp",
+      "log_transform": "log10"
+    }
+  ],
+  "sectors": [
+    {
+      "idx": 0,
+      "col": "edu",
+      "name": "교육학습"
+    },
+    {
+      "idx": 1,
+      "col": "care",
+      "name": "돌봄복지"
+    },
+    {
+      "idx": 2,
+      "col": "cult",
+      "name": "체육문화"
+    },
+    {
+      "idx": 3,
+      "col": "med",
+      "name": "보건의료"
+    },
+    {
+      "idx": 4,
+      "col": "safe",
+      "name": "안전치안"
+    }
+  ]
+}
