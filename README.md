@@ -2,8 +2,7 @@
 
 공간 분석 결과를 시각화한 웹 대시보드들을 모아두는 레포입니다.
 
-데이터는 QGIS 플러그인으로 산출하고, Python으로 빌드해 단일 HTML 파일로 배포합니다.
-
+문의 있으면 handbell@krihs.re.kr 로 연락주세요
 ---
 
 ## 목록
@@ -17,4 +16,4 @@
 
 ## 기술 스택
 
-`Python` `QGIS` `Shapefile` `HTML/JS`
+`Python`, `QGIS', 'Claude Code' 짜스
