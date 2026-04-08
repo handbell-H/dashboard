@@ -11,6 +11,7 @@
 |------|------|
 | [monitoring_living_infra_total_dashboard_v1](./monitoring_living_infra_total_dashboard_v1/) | 생활인프라 접근성·공급수준·서비스인구 종합 모니터링 (시군구 단위) |
 | [monitoring_living_infra_total_dashboard_v2](./monitoring_living_infra_total_dashboard_v2/) | v1 + 지도 시도 바로가기 버튼·클릭 줌인, 순위 비교 단계적 선택 |
+| [monitoring_living_infra_total_dashboard_v3](./monitoring_living_infra_total_dashboard_v3/) | v2 + 종합지수 T점수 기반 평균으로 변경, 세부지수 T점수 표준화, 동적 색상 범위 · [🔗 대시보드 보기](https://handbell-h.github.io/dashboard/monitoring_living_infra_total_dashboard_v3/dashboard.html) |
 
 ---
 
