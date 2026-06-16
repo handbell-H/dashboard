@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>제9회 전국동시지방선거 결과 대시보드 v2</title>
+  <link rel="stylesheet" href="./vote_dashboard_v2.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">제9회 전국동시지방선거 개표단위별 결과 v2</p>
+      <h1>투표 결과 검증 대시보드 v2</h1>
+    </div>
+    <div class="loadBox">
+      <label class="fileLabel" for="csvFile">CSV 선택</label>
+      <input id="csvFile" type="file" accept=".csv,text/csv">
+      <button id="reloadBtn" class="ghost">기본 CSV 다시 불러오기</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="statusBand" aria-live="polite">
+      <div>
+        <span class="label">상태</span>
+        <strong id="loadStatus">CSV 로드 대기 중</strong>
+      </div>
+      <div>
+        <span class="label">CSV 원본 행</span>
+        <strong id="rowCount">-</strong>
+      </div>
+      <div>
+        <span class="label">개표단위</span>
+        <strong id="regionCount">-</strong>
+      </div>
+      <div>
+        <span class="label">후보 조합</span>
+        <strong id="candidateStatus">-</strong>
+      </div>
+    </section>
+
+    <section class="controlsBand">
+      <div class="control">
+        <label for="typeSelect">선거유형</label>
+        <select id="typeSelect">
+          <option value="__ALL__">전체 선거유형</option>
+        </select>
+      </div>
+      <div class="control">
+        <label for="voteCategorySelect">투표 구분</label>
+        <select id="voteCategorySelect">
+          <option value="__ALL__">전체 구분</option>
+          <option value="최종결과">최종결과</option>
+          <option value="본투표">본투표</option>
+          <option value="사전투표">사전투표</option>
+        </select>
+      </div>
+      <div class="control">
+        <label for="turnoutLevelSelect">사전투표율 단위</label>
+        <select id="turnoutLevelSelect">
+          <option value="province">도단위</option>
+          <option value="city">시단위</option>
+        </select>
+      </div>
+      <div class="control">
+        <label for="minVotes">최소 투표수</label>
+        <input id="minVotes" type="number" min="0" value="0">
+      </div>
+      <div class="control toggleControl">
+        <label for="includeExcludedBtn">기본 제외 항목</label>
+        <button id="includeExcludedBtn" class="ghost" type="button" aria-pressed="false">제외 항목 보기: 꺼짐</button>
+        <small>잘못 투입·구분된 투표지, 계, 선거일투표</small>
+      </div>
+    </section>
+
+    <section class="actionGrid">
+      <button id="sameVotesBtn"><span>1</span>동일 투표수 지역 추출</button>
+      <button id="sameRatioBtn"><span>2</span>동일 비율 지역 추출</button>
+      <button id="benfordBtn"><span>3</span>벤포드 법칙 점검</button>
+      <button id="earlyTurnoutBtn"><span>4</span>지역별 사전투표율</button>
+    </section>
+
+    <section class="notice">
+      <strong>해석 주의</strong>
+      이 화면은 같은 선거구 안에서만 같은 숫자와 비율을 찾는 탐색 도구입니다. 동일값과 벤포드 편차는 추가 확인 신호일 수 있지만 단독으로 이상이나 부정을 판정하지 않습니다.
+    </section>
+
+    <section id="summaryPanel" class="summaryPanel"></section>
+    <section id="resultPanel" class="resultPanel"></section>
+  </main>
+
+  <template id="emptyTemplate">
+    <div class="empty">
+      <h2>분석 결과가 없습니다</h2>
+      <p>현재 필터 조건에서 같은 값이 발견되지 않았습니다.</p>
+    </div>
+  </template>
+
+  <script src="./vote_dashboard_v2.js"></script>
+</body>
+</html>
