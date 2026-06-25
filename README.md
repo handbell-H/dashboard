@@ -13,6 +13,7 @@
 | [monitoring_living_infra_total_dashboard_v2](./monitoring_living_infra_total_dashboard_v2/) | v1 + 지도 시도 바로가기 버튼·클릭 줌인, 순위 비교 단계적 선택 |
 | [monitoring_living_infra_total_dashboard_v3](./monitoring_living_infra_total_dashboard_v3/) | v2 + 종합지수 T점수 기반 평균으로 변경, 세부지수 T점수 표준화, 동적 색상 범위 · [🔗 대시보드 보기](https://handbell-h.github.io/dashboard/monitoring_living_infra_total_dashboard_v3/dashboard.html) |
 | [vote_dashboard_v2](./vote_dashboard_v2/) | 제9회 전국동시지방선거 개표결과 검증 — 동일 투표수·동일 비율·벤포드 법칙·지역별 사전투표율 (선거구 단위 탐색) · [🔗 대시보드 보기](https://handbell-h.github.io/dashboard/vote_dashboard_v2/vote_dashboard_v2.html) |
+| [simtool_dashboard](./simtool_dashboard/) | KRIHS 공간구조 분석/시뮬레이션 도구(17개) 설명 — 도구별 입력·처리·출력, 중복·유사 기능, 기능 결합(Airflow식 흐름), 전체 폴더 구조 트리 · [🔗 대시보드 보기](https://handbell-h.github.io/dashboard/simtool_dashboard/dashboard.html) |
 
 ---
 

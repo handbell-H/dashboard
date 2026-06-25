@@ -1,0 +1,37 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>KRIHS 공간구조 분석 도구 흐름</title>
+  <meta name="description" content="KRIHS QGIS 공간구조 분석/시뮬레이션 도구를 한 화면에 하나씩 넘겨보는 설명 대시보드" />
+  <link rel="stylesheet" href="./dashboard.css" />
+</head>
+<body>
+  <div id="progress"></div>
+
+  <header class="topbar">
+    <a class="brand" href="./README.md" title="README 보기">
+      <span class="brand-dot"></span>
+      <span>KRIHS 공간구조</span>
+      <small>sim tools</small>
+    </a>
+    <span class="spacer"></span>
+    <span class="crumb" id="crumb">중심지 분석</span>
+    <span class="counter" id="counter">01 / 09</span>
+    <button class="info-btn tree-btn" id="treeBtn" type="button">전체 구조</button>
+    <button class="info-btn" id="dupBtn" type="button">중복·유사</button>
+    <button class="info-btn" id="combBtn" type="button">결합 흐름</button>
+  </header>
+
+  <main class="deck-shell" aria-label="도구 설명 슬라이드">
+    <button class="side-nav prev" id="prevBtn" type="button" aria-label="이전 도구">←</button>
+    <section class="tool-window" id="toolWindow" aria-live="polite"></section>
+    <button class="side-nav next" id="nextBtn" type="button" aria-label="다음 도구">→</button>
+  </main>
+
+  <nav class="dotbar" id="dots" aria-label="도구 바로가기"></nav>
+
+  <script src="./dashboard.js"></script>
+</body>
+</html>
