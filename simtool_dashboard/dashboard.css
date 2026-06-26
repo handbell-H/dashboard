@@ -277,6 +277,26 @@ body.modal-open{overflow:hidden;}
 .dag{display:block;width:100%;height:auto;background:#fbfcfe;border:1px solid var(--line-soft);border-radius:10px;padding:8px;margin-bottom:8px;}
 .dag-t{font-family:var(--font);font-weight:700;font-size:11px;}
 .dag-cap{font-family:var(--font);font-weight:700;font-size:9.5px;fill:var(--faint);}
+.uc-card{border:1px solid var(--line);border-radius:12px;padding:14px 15px 13px;margin:0 0 16px;background:var(--bg-soft);}
+.uc-title{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:800;color:var(--ink);}
+.uc-num{flex:none;width:22px;height:22px;border-radius:7px;background:var(--accent);color:#fff;font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;}
+.uc-crumb{margin:5px 0 0;font-size:11px;font-weight:700;color:var(--muted);}
+.uc-warn{margin-top:9px;padding:7px 10px;font-size:11.8px;line-height:1.45;color:var(--amber);background:var(--amber-soft);border:1px solid #f3e2c2;border-radius:8px;}
+.uc-sec{margin-top:11px;}
+.uc-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin-bottom:5px;}
+.uc-q,.uc-out,.uc-cond{margin:0;padding:0;list-style:none;}
+.uc-q li,.uc-out li,.uc-cond li{position:relative;padding:4px 0 4px 16px;font-size:12.6px;line-height:1.5;color:var(--ink-soft);}
+.uc-q li::before{content:"Q";position:absolute;left:0;top:4px;font-weight:800;font-size:10.5px;color:var(--accent);}
+.uc-out li::before{content:"\25B8";position:absolute;left:1px;top:4px;color:var(--green);}
+.uc-cond li::before{content:"\00B7";position:absolute;left:4px;top:2px;font-weight:800;color:var(--faint);}
+.uc-out li small,.uc-cond li small{display:block;margin-top:1px;font-size:10.8px;color:var(--faint);line-height:1.4;}
+.uc-models{display:flex;flex-wrap:wrap;gap:6px;}
+.uc-model{display:inline-flex;align-items:center;gap:6px;font-size:11.8px;font-weight:600;color:var(--ink-soft);background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 11px 3px 4px;}
+.uc-model .yr{font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:999px;}
+.uc-model.y1 .yr{color:var(--purple);background:var(--purple-soft);}
+.uc-model.y2 .yr{color:var(--accent-ink);background:var(--accent-soft);}
+.uc-model.new .yr{color:var(--amber);background:var(--amber-soft);}
+.uc-card .dag{margin-bottom:0;}
 .dots{font-size:11px;letter-spacing:1px;white-space:nowrap;}
 .dots.d3{color:var(--rose);}
 .dots.d2{color:var(--amber);}

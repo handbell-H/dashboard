@@ -743,53 +743,170 @@
     return '<svg class="dag" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="결합 흐름도">' + inner + '</svg>';
   }
 
-  var combA = dagWrap(760, 200,
-    dagEdge(140,35,170,35) + dagEdge(280,35,310,35) + dagEdge(420,35,570,99) +
-    dagEdge(140,101,360,52,true) +
-    dagEdge(114,167,128,167) + dagEdge(212,167,226,167) + dagEdge(310,167,324,167) + dagEdge(408,167,570,99) +
-    dagNode(30,18,110,"후보 추출","center") + dagNode(170,18,110,"속성 추출","center") + dagNode(310,18,110,"위계 설정","center") +
-    dagNode(30,84,110,"정책관심구역","sim") +
-    dagNode(30,150,84,"대표점","region") + dagNode(128,150,84,"도로거리","region") + dagNode(226,150,84,"이동량","region") + dagNode(324,150,84,"매력도","region") +
-    dagNode(570,82,160,"중심지 체계도","result") +
-    dagCap(250,72,"교차검증") + dagCap(495,142,"상위·하위 중심지 연결"));
+  // ── 모형 적용 유즈케이스(결합 방식) 카드 헬퍼 ──
+  function ucModels(arr){
+    return '<div class="uc-models">' + arr.map(function(m){
+      return '<span class="uc-model ' + m.y + '"><span class="yr">' + m.yr + '</span>' + m.t + '</span>';
+    }).join("") + '</div>';
+  }
+  function ucItems(cls, arr){
+    return '<ul class="' + cls + '">' + arr.map(function(s){ return '<li>' + s + '</li>'; }).join("") + '</ul>';
+  }
+  function ucBlock(c){
+    return '<section class="uc-card">' +
+      '<div class="uc-title"><span class="uc-num">' + c.n + '</span>' + c.title + '</div>' +
+      '<div class="uc-crumb">적용대상 · ' + c.crumb + '</div>' +
+      (c.warn ? '<div class="uc-warn">' + c.warn + '</div>' : '') +
+      '<div class="uc-sec"><div class="uc-label">행위자 질문 (활동 목적)</div>' + ucItems("uc-q", c.q) + '</div>' +
+      '<div class="uc-sec"><div class="uc-label">결합 모형 기능</div>' + ucModels(c.models) + '</div>' +
+      '<div class="uc-sec"><div class="uc-label">결합 흐름</div>' + c.dag + '</div>' +
+      '<div class="uc-sec"><div class="uc-label">주요 산출물</div>' + ucItems("uc-out", c.out) + '</div>' +
+      '<div class="uc-sec"><div class="uc-label">적용 조건 · 한계</div>' + ucItems("uc-cond", c.cond) + '</div>' +
+    '</section>';
+  }
 
-  var combB = dagWrap(760, 130,
-    dagEdge(170,39,190,39) + dagEdge(290,39,570,69) + dagEdge(200,99,570,69) +
-    dagNode(30,22,140,"기초생활권 할당","region") + dagNode(190,22,100,"스무딩","region") +
-    dagNode(30,82,170,"매력도 상위생활권","region") +
-    dagNode(570,52,160,"생활권 계획","result"));
+  // 유즈케이스 1 · 중심지 기반 생활권 도출 + KPI/진단 결합
+  var ucDagA = dagWrap(760, 188,
+    dagEdge(104,89,130,89) + dagEdge(258,89,284,89) + dagEdge(432,89,458,89) + dagEdge(584,89,618,89) +
+    dagEdge(298,142,358,106,true) + dagEdge(494,142,521,106,true) +
+    dagNode(14,72,90,"거점지도","data") +
+    dagNode(130,72,128,"중심지 추출·위계","center") +
+    dagNode(284,72,148,"중심지-생활권 경계","region") +
+    dagNode(458,72,126,"KPI·진단 10지표","region") +
+    dagNode(618,72,128,"생활권 현황·진단","result") +
+    dagNode(246,142,104,"통행행렬","data") +
+    dagNode(430,142,128,"격자 인구·시설","data"));
 
-  var combC = dagWrap(760, 178,
-    dagEdge(200,39,570,95) + dagEdge(200,95,570,95) + dagEdge(200,151,570,95) +
-    dagNode(30,22,170,"인구 배분","sim") + dagNode(30,78,170,"향유도","sim") + dagNode(30,134,170,"관리대상·폐업","sim") +
-    dagNode(570,78,170,"계획지표·모니터링","result"));
+  // 유즈케이스 2 · 현재 생활권 경계 + 장래인구/시설 융합 → 변화 전망
+  var ucDagB = dagWrap(760, 178,
+    dagEdge(156,41,300,95) + dagEdge(156,95,300,95) + dagEdge(156,149,300,95) +
+    dagEdge(470,95,560,95) +
+    dagNode(16,24,140,"생활권 경계(현재)","region") +
+    dagNode(16,78,140,"장래인구 배분","sim") +
+    dagNode(16,132,140,"장래 시설 위치","data") +
+    dagNode(300,78,170,"KPI·진단 재산정","region") +
+    dagNode(560,78,170,"현재 → 장래 비교","result"));
 
-  var combD = dagWrap(760, 165,
-    dagEdge(164,83,196,83) +
-    dagEdge(296,83,350,37) + dagEdge(296,83,350,129) +
-    dagEdge(510,37,600,83) + dagEdge(520,129,600,83) +
-    dagNode(24,66,140,"계획인구(사업지구)","popplan") + dagNode(196,66,100,"격자 인구","popplan") +
-    dagNode(350,20,160,"향유도·관리대상","sim") + dagNode(350,112,170,"생활권·중심지 재산정","region") +
-    dagNode(600,66,140,"전·후 비교","result"));
+  // 유즈케이스 3 · 계획반영 장래인구 배분 → 시설 시뮬 → 계획지표
+  var ucDagC = dagWrap(760, 166,
+    dagEdge(166,41,210,89) + dagEdge(166,137,210,89) +
+    dagEdge(370,89,406,89) + dagEdge(556,89,590,89) +
+    dagNode(16,24,150,"시군구 장래인구추계","data") +
+    dagNode(16,120,150,"개발계획 사업지구","popplan") +
+    dagNode(210,72,160,"계획반영 격자배분","popplan") +
+    dagNode(406,72,150,"시설 신설·폐지","sim") +
+    dagNode(590,72,150,"시설 계획지표","result"));
 
-  var combE = dagWrap(760, 78,
-    dagEdge(136,40,152,40) + dagEdge(302,40,318,40) + dagEdge(398,40,414,40) + dagEdge(514,40,530,40) +
-    dagNode(16,23,120,"거점·인프라","data") + dagNode(152,23,150,"정책구역/중심지","sim") +
-    dagNode(318,23,80,"생활권","region") + dagNode(414,23,100,"인구 배분","sim") +
-    dagNode(530,23,120,"생활·관리 지표","result"));
+  // 유즈케이스 4 · 계획반영 장래 사회경제지표 → 중심지 추출 → 장래 중심지
+  var ucDagD = dagWrap(760, 100,
+    dagEdge(176,57,210,57) + dagEdge(340,57,374,57) + dagEdge(524,57,560,57) +
+    dagNode(16,40,160,"장래 사회경제지표","data") +
+    dagNode(210,40,130,"계획반영 격자배분","popplan") +
+    dagNode(374,40,150,"중심지 추출·위계","center") +
+    dagNode(560,40,150,"장래 중심지 분포","result") +
+    dagCap(635,90,"현재 대비 차이 비교"));
 
   var COMB_HTML = [
-    '<p class="muted">기능을 이어 붙여 도시·군기본계획 산출물을 만드는 예시. 노드 색 = 출처 그룹(파랑 중심지분석 · 초록 생활권 · 보라 시뮬레이션 · 주황 계획인구), 검정 = 최종 산출물.</p>',
-    '<h4>A · 중심지 위계 체계</h4>',
-    '<p class="comb-desc">중심지 후보→위계 + 정책관심구역 교차검증 + 중심지 간 관계(대표점·거리·이동량·매력도)로 상위·하위 중심지 연결.</p>', combA,
-    '<h4>B · 생활권 설정</h4>',
-    '<p class="comb-desc">기초생활권(할당→스무딩) + 광역생활권(매력도) ⇒ 생활권 계획 단위.</p>', combB,
-    '<h4>C · 계획지표 산출</h4>',
-    '<p class="comb-desc">인구·향유도·관리대상을 생활권 단위로 모아 계획지표·모니터링 지표화.</p>', combC,
-    '<h4>D · 개발계획 반영 시뮬레이션</h4>',
-    '<p class="comb-desc">계획인구(사업지구 반영)로 격자 인구를 갱신해 생활여건·중심지를 재산정, 계획 전·후 비교.</p>', combD,
-    '<h4>E · End-to-End 파이프라인</h4>',
-    '<p class="comb-desc">거점지도부터 계획지표까지 한 흐름으로.</p>', combE
+    '<p class="muted">「모형적용 TF 2차회의 자료」가 정리한 <b>4개 결합 방식(모형 적용 유즈케이스)</b> — 1·2차년도 모형 기능을 결합해 공간계획 업무를 지원하는 시나리오입니다. 각 카드는 <b>적용 업무 ▸ 행위자 질문 → 결합 모형 → 결합 흐름 → 산출물 → 조건·한계</b> 순. DAG 노드 색 = 모형 그룹(파랑 중심지분석 · 초록 생활권 · 보라 시뮬레이션 · 주황 계획반영), 검정 = 최종 산출물.</p>',
+    ucBlock({
+      n:"1", title:"중심지 기반 생활권 도출 · 특성 진단",
+      crumb:"공간 형성 방향 설정 ▸ 생활권 현황 및 진단",
+      q:[
+        "현 계획권역에서 중심지와의 일상 통행을 고려할 때 생활권은 어떻게 형성되어 있는가?",
+        "생활권 간 계층 구조(기초·지역·광역)는 어떠한가?",
+        "공간구조 측면에서 생활권들은 어떤 특성을 가지는가?"
+      ],
+      models:[
+        {y:"y2", yr:"2차", t:"중심지-생활권 설정 모형"},
+        {y:"y1", yr:"1차", t:"KPI 진단지표"},
+        {y:"y2", yr:"2차", t:"생활권 공간구조 진단(10지표)"}
+      ],
+      dag:ucDagA,
+      out:[
+        "중심지 분포 지도<small>생활(충족도 마을+거점 20%↑) · 지역(거점 50%↑ &amp; 주거 5천명↑) · 광역(주거·근무 각 5만명↑ &amp; 유입+유출중심성 ≥ 2.0)</small>",
+        "중심지-생활권 경계 지도 (기초 · 지역 · 광역 생활권)",
+        "생활권별 공간구조 특성 지표 표 및 시각화 결과물"
+      ],
+      cond:[
+        "거점지도 지표 기반 — 적용지역·목적에 맞게 중심지 기준·위계 구분을 사용자가 조정",
+        "“정책관심구역 내 인구밀도” 등 일부 지표는 정책관심구역을 사용자가 설정 필요",
+        "도로망 기반 이동성 분석 → 섬 지역 등은 바로 적용 어려워 대안적 분석 필요",
+        "고밀 단일 중심지는 내부 하위 생활권 세분화 등 추가 분석 필요"
+      ]
+    }),
+    ucBlock({
+      n:"2", title:"생활권 공간구조 변화 전망",
+      crumb:"지역 여건 진단 및 전망 ▸ 여건 변화 전망",
+      q:[
+        "장래 인구 변화를 고려할 때 계획권역 내부 생활권의 공간구조는 어떻게 될 것인가?",
+        "인구 분산이 심화되고 서비스 이용이 어려워져 관심을 두어야 할 지역은 어디인가?"
+      ],
+      models:[
+        {y:"y2", yr:"2차", t:"중심지-생활권 모형(현재 경계)"},
+        {y:"y1", yr:"1차", t:"격자단위 장래인구 배분(현재 추세)"},
+        {y:"y1", yr:"1차", t:"KPI 진단지표"},
+        {y:"y2", yr:"2차", t:"생활권 공간구조 진단(10지표)"}
+      ],
+      dag:ucDagB,
+      out:[
+        "생활권별 공간구조 특성 지표 표 및 시각화 (현재 → 장래)",
+        "인구과소지역 비율 지표 시각화 및 관련 변화 지도",
+        "중심지 인구 집중도 지표(유형별 분해) 시각화 및 변화 지도"
+      ],
+      cond:[
+        "생활권 경계를 분석으로 도출할 경우 유즈케이스 1의 조건과 동일",
+        "사용자가 별도 생활권 경계를 쓸 경우 생활권별 중심지의 공간적 범위 데이터도 필요",
+        "장래 데이터를 구득·생산하기 어려운 지표는 전망에 활용 불가"
+      ]
+    }),
+    ucBlock({
+      n:"3", title:"장래인구 기반 시설 계획지표 설정",
+      crumb:"계획 방향 설정 ▸ 계획 목표지표 설정",
+      q:[
+        "공공도서관·초등학교 등 공공시설·생활인프라시설의 장래 목표치는 어떻게, 얼마로 설정해야 하는가?"
+      ],
+      models:[
+        {y:"y1", yr:"1차", t:"공간정책 투입모형"},
+        {y:"y1", yr:"1차", t:"격자단위 장래인구 배분모형"},
+        {y:"y1", yr:"1차", t:"생활여건 변화모형"},
+        {y:"y1", yr:"1차", t:"KPI 진단지표"},
+        {y:"new", yr:"신규", t:"계획반영 장래인구 배분모형"}
+      ],
+      dag:ucDagC,
+      out:[
+        "시나리오별 장래인구 분포 및 변화 지도",
+        "시나리오별 장래 시설 위치 및 변화 지도",
+        "시나리오별 시설 공급 · 형평성(향유도) 지표 표 및 시각화"
+      ],
+      cond:[
+        "시군구 단위 장래인구 추계치 확보 필요 (개발계획 별도 산출 시도 시군구 단위)",
+        "계획반영 시나리오: 사업지구 데이터(경계·계획인구·건설호수)와 신규 시설 위치 데이터 필요",
+        "정책관심구역을 사용자가 설정 — 신규 개발지구는 정책관심구역으로 간주",
+        "장래 데이터 구득·생산이 어려운 지표는 활용 불가"
+      ]
+    }),
+    ucBlock({
+      n:"4", title:"장래 중심지 전망",
+      crumb:"공간 형성 방향 설정 ▸ 공간구조 진단 및 전망 (중심지 구조)",
+      warn:"※ 본 결합 방식은 실제 구현 가능성과 결과의 유의미성에 대해 추가 테스트가 필요한 것으로 PDF에 명시됨.",
+      q:[
+        "인구감소·개발계획 등을 고려할 때 장래 시점(목표년도 등)의 중심지는 어디일까?"
+      ],
+      models:[
+        {y:"new", yr:"신규", t:"계획반영 장래 사회경제지표 격자배분"},
+        {y:"y2", yr:"2차", t:"중심지 추출 및 위계 설정"}
+      ],
+      dag:ucDagD,
+      out:[
+        "장래 중심지 분포 지도",
+        "현재 대비 장래 중심지 차이 지도"
+      ],
+      cond:[
+        "개발계획이 반영된 장래 사회경제 지표(인구·종사자수·취업자수)를 미리 확보 필요",
+        "거점지도 분석지표 중 근무인구를 종사자 수 지표로 대체 필요",
+        "장래 도로망 데이터 확보가 어려워 생활인프라 충족도로 위계 설정 곤란 → 사용자가 격자 장래 지표·추가 정보로 위계 기준 설정"
+      ]
+    })
   ].join("");
 
   var DUP_HTML = [
@@ -826,7 +943,7 @@
   function anyModalOpen(){ return !!document.querySelector(".modal:not([hidden])"); }
 
   var dupModal = makeModal("중복 · 유사 기능 점검", DUP_HTML);
-  var combModal = makeModal("기능 결합 흐름 (Airflow 스타일)", COMB_HTML);
+  var combModal = makeModal("기능 결합 방식 · 모형 적용 유즈케이스", COMB_HTML);
   var dupBtn = document.getElementById("dupBtn");
   var combBtn = document.getElementById("combBtn");
   if(dupBtn) dupBtn.addEventListener("click", function(){ openM(dupModal); });

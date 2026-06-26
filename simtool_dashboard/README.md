@@ -13,4 +13,4 @@ QGIS 공간구조 분석/시뮬레이션 도구(17개)를 한 화면에 하나�
 
 ## QGIS Processing 툴박스
 
-![QGIS Processing 툴박스](./qgis_plungin2.png)
+![QGIS Processing 툴박스](./qgis_plungin3.png)
