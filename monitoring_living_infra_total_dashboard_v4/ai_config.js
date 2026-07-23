@@ -97,7 +97,8 @@ window.AI_CONFIG = {
       input_schema: { type: 'object', properties: {
         sgg_nm: { type: 'string', description: '대상 시군구명(필수)' },
         facility: { type: 'string', enum: ['daycar','kinder','elem','smlib','allday','welfar','snrlei','snrctr','hosp','health','clinic','pharma','eqshlt','emerg','police','fire','lfpark','thpark','cultur','sports'], description: '특정 시설 코드로 한정(선택)' },
-        sector: { type: 'string', enum: ['edu','care','med','safe','cult'], description: '부문으로 한정(선택)' }
+        sector: { type: 'string', enum: ['edu','care','med','safe','cult'], description: '부문으로 한정(선택)' },
+        year: { type: 'string', description: '조회 연도 (예: 2023). 생략 시 최신 연도' }
       }, required: ['sgg_nm'] }
     },
     {

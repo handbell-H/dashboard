@@ -7,7 +7,12 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/deck.gl@8.9.35/dist.min.js"></script>
-<script src="access_grids.js"></script>
+<script>
+/* 레이어 등록 부트스트랩 — 본문 스크립트가 waiter 포함 버전으로 교체한다 */
+window.LAYER_CACHE = {};
+window.__LAYER = function (k, d) { window.LAYER_CACHE[k] = d; };
+</script>
+<script src="layers/access_2024.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chroma-js@2.4.2/chroma.min.js"></script>
 <script src="ai_config.js"></script>
@@ -932,7 +937,7 @@ const GRID_SCALE = chroma.scale(['#d73027','#fdae61','#fee08b','#a6d96a','#1a985
 // layers/{kind}_{fac}_{year}.js 파일을 시설·연도 조합별로 lazy-load 한다.
 let poiOn = false, svcOn = false;
 let layerFac = 'daycar';   // 선택 시설 코드
-const LAYER_CACHE = {};
+const LAYER_CACHE = window.LAYER_CACHE;   // head 부트스트랩에서 생성 (access_최신연도 포함)
 const _layerWaiters = {};
 window.__LAYER = (k, d) => {
   LAYER_CACHE[k] = d;
@@ -958,11 +963,14 @@ function facColorRgb(code) {
 }
 // 켜진 레이어에 필요한 파일들을 로드한 뒤 지도 재렌더
 async function refreshOverlayLayers() {
-  if (highlightSggCd != null && (poiOn || svcOn)) {
+  if (highlightSggCd != null && (poiOn || svcOn || gridLayerOn)) {
     const jobs = [];
-    // 서비스권역도 반경 원을 그리려면 시설 좌표(POI)가 필요
-    [Y1, Y2].forEach(y => jobs.push(loadLayerKey(`poi_${layerFac}_${y}`).catch(() => null)));
+    if (poiOn || svcOn) {
+      // 서비스권역도 반경 원을 그리려면 시설 좌표(POI)가 필요
+      [Y1, Y2].forEach(y => jobs.push(loadLayerKey(`poi_${layerFac}_${y}`).catch(() => null)));
+    }
     if (svcOn) jobs.push(loadLayerKey('svc_ratios').catch(() => null));
+    if (gridLayerOn) [Y1, Y2].forEach(y => jobs.push(loadLayerKey(`access_${y}`).catch(() => null)));
     await Promise.all(jobs);
   }
   renderChoropleth();
@@ -1099,7 +1107,7 @@ function buildMapLayers(year) {
   const feats = curSidoFilter
     ? GEOJSON.features.filter(f => f.properties.sido_nm_k === curSidoFilter)
     : GEOJSON.features;
-  const showGrid = gridLayerOn && year === Y2;   // 격자는 최신연도 지도에만 (시계열 아님)
+  const showGrid = gridLayerOn;   // 격자는 연도별 데이터 → 좌우 지도 각각 표시
   const layers = [
     makeTileLayer(),
     new deck.GeoJsonLayer({
@@ -1122,14 +1130,11 @@ function buildMapLayers(year) {
       lineWidthUnits: 'pixels', getLineWidth: 3, lineWidthMinPixels: 2.5, pickable: false
     }));
   }
-  if (showGrid && highlightSggCd != null && typeof ACCESS_GRIDS !== 'undefined') {
-    const raw = ACCESS_GRIDS[String(highlightSggCd)] || [];
-    const gdata = raw.map(a => ({ position: [a[0], a[1]], mask: a[2], score: popcount(a[2]), pop: a[3] || 0 }));
-    // 인구 색상 스케일 상한: 해당 시군구 격자 인구 95분위 (극단값 완화)
-    const pops = gdata.map(d => d.pop).filter(v => v > 0).sort((x, y) => x - y);
-    _gridPopMax = pops.length ? Math.max(1, pops[Math.floor(pops.length * 0.95)]) : 1;
+  if (showGrid && highlightSggCd != null && LAYER_CACHE['access_' + year]) {
+    const raw = LAYER_CACHE['access_' + year][String(highlightSggCd)] || [];
+    const gdata = raw.map(a => ({ position: [a[0], a[1]], mask: a[2], score: popcount(a[2]), pop: a[3] || 0, year }));
     layers.push(new deck.ScatterplotLayer({
-      id: 'access-grids', data: gdata, getPosition: d => d.position, opacity: gridOpacity,
+      id: 'access-grids-' + year, data: gdata, getPosition: d => d.position, opacity: gridOpacity,
       getRadius: 230, radiusUnits: 'meters', radiusMinPixels: 2, radiusMaxPixels: 16,
       getFillColor: d => {
         if (gridColorMode === 'pop') {
@@ -1186,8 +1191,8 @@ function updateGridDetail(d) {
   const bySec = { edu: [], care: [], med: [], safe: [], cult: [] };
   FACILITIES.forEach((f, i) => { bySec[f[2]].push({ kor: f[1], on: (d.mask >> i) & 1 }); });
   let html = `<div class="leg-title" style="margin-bottom:2px">
-    선택 격자 · 충족 <span style="color:var(--ink)">${d.score}</span>/20</div>
-    <div style="font-size:.72rem;color:var(--ink-2);margin-bottom:6px">👥 격자 인구(${typeof ACCESS_GRIDS_POP_YEAR !== 'undefined' ? ACCESS_GRIDS_POP_YEAR : Y2}): <b style="color:var(--ink)">${(d.pop || 0).toLocaleString()}명</b></div>`;
+    선택 격자 (${d.year || Y2}년) · 충족 <span style="color:var(--ink)">${d.score}</span>/20</div>
+    <div style="font-size:.72rem;color:var(--ink-2);margin-bottom:6px">👥 격자 인구: <b style="color:var(--ink)">${(d.pop || 0).toLocaleString()}명</b></div>`;
   SECTOR_ORDER.forEach((sk, idx) => {
     const s = SEC[sk];
     const onCnt = bySec[sk].filter(it => it.on).length;
@@ -1343,7 +1348,7 @@ function initMap() {
   }
   gridToggleBtn.addEventListener('click', () => {
     if (highlightSggCd == null) return;
-    gridLayerOn = !gridLayerOn; updateGridBtnUI(); renderChoropleth();
+    gridLayerOn = !gridLayerOn; updateGridBtnUI(); refreshOverlayLayers();
   });
   document.getElementById('gcm-score').addEventListener('click', () => {
     gridColorMode = 'score';
@@ -1364,8 +1369,6 @@ function initMap() {
     if (m === mapMode) return;
     mapMode = m;
     modeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.m === m));
-    document.querySelector('.map-dual').classList.toggle('single', m === 'detail');
-    document.getElementById('map-chip-y2').textContent = Y2 + '년' + (m === 'detail' ? ' · 상세보기' : '');
     if (m === 'compare') {
       showGridToggle(false);
       renderChoropleth();
@@ -1519,6 +1522,7 @@ function initMap() {
     controller: true,
     layers: [],
     getTooltip: mapTooltipFor(Y1),
+    onHover: info => updateGridDetail(info && info.object && info.object.mask !== undefined ? info.object : null),
     onViewStateChange: syncedView(() => deckMap1, () => deckMap),
     onClick: info => {
       if (info && info.object && info.object.properties) pickSgg(info.object);
@@ -1531,6 +1535,17 @@ function initMap() {
 function renderChoropleth() {
   if (!deckMap) return;
   computeColorState();   // 등급은 두 연도 통합 전국 기준 (시도 필터와 무관)
+  // 격자 인구 색상 상한: 두 연도 합산 95분위 → 좌우 지도가 같은 스케일
+  if (gridLayerOn && highlightSggCd != null) {
+    const cd = String(highlightSggCd);
+    const pops = [];
+    [Y1, Y2].forEach(y => {
+      const AG = LAYER_CACHE['access_' + y];
+      ((AG && AG[cd]) || []).forEach(a => { if (a[3] > 0) pops.push(a[3]); });
+    });
+    pops.sort((x, y) => x - y);
+    _gridPopMax = pops.length ? Math.max(1, pops[Math.floor(pops.length * 0.95)]) : 1;
+  }
   deckMap.setProps({ layers: buildMapLayers(Y2) });
   if (deckMap1) deckMap1.setProps({ layers: buildMapLayers(Y1) });
   updateMapLegend();
@@ -1568,7 +1583,7 @@ function updateMapLegend() {
           [1,4,7,10,13,16,20].map(s => `<div style="flex:1;background:${GRID_SCALE(s).hex()}"></div>`).join('')
         }</div>
         <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--ink-2)"><span>1</span><span>10</span><span>20</span></div>
-        <div style="font-size:.66rem;color:var(--ink-3);margin-top:4px">0점(전부 미충족) 격자는 표시 안 함</div>`;
+        <div style="font-size:.66rem;color:var(--ink-3);margin-top:4px">좌 ${Y1}년 · 우 ${Y2}년 격자 (0점·무인구 격자는 제외)</div>`;
     }
     div.innerHTML = gl + overlayLegendHtml();
     return;
@@ -2464,7 +2479,7 @@ window.addEventListener('DOMContentLoaded', function() {
         <li>T점수는 <strong>해당 연도 전국 분포 안에서의 상대 표준화</strong>입니다. 연도 간 점수 차이는 시설의 절대적 증감이 아니라 <strong>전국 내 상대적 위치의 변화</strong>를 뜻합니다.</li>
         <li>따라서 모든 Δ 표시에는 <strong>순위 변화를 병기</strong>해 상대적 이동을 함께 보여줍니다.</li>
         <li>듀얼 맵의 색상 등급은 <strong>두 연도 통합 분포 기준</strong>으로 계산해 좌우 지도가 같은 잣대로 비교됩니다.</li>
-        <li>지도 탭 <strong>상세보기 모드</strong>(단일 최신연도 지도)에서 시군구를 선택하면 500m 격자(충족점수·격자 인구)와 서비스권역 인구비율 패널이 자동 표시되고, 시설 POI를 on/off 할 수 있습니다. 격자·인구 데이터는 최신 시점 기준입니다.</li>
+        <li>지도 탭 <strong>상세보기 모드</strong>에서 시군구를 선택하면 좌(이전연도)·우(최신연도) 지도에 각 연도의 500m 격자(충족점수·격자 인구)와 시설 서비스권역이 표시되고, 서비스권역 인구비율 패널이 함께 열립니다. 시설 POI는 on/off 할 수 있습니다.</li>
       </ul>
     </div>
     <div class="modal-foot">
@@ -2859,10 +2874,12 @@ function _toolCompareYears(input) {
 }
 
 function _toolQueryAccessGrids(input) {
-  if (typeof ACCESS_GRIDS === 'undefined') return { error: '격자 데이터(access_grids.js)가 로드되지 않았습니다.' };
+  const y = input.year != null && YEARS[String(input.year)] ? String(input.year) : CUR_YEAR;
+  const AG = LAYER_CACHE['access_' + y];
+  if (!AG) return { error: `격자 데이터(access_${y})가 아직 로드되지 않았습니다. 잠시 후 다시 시도하세요.` };
   const rec = _findRec(input.sgg_nm);
   if (!rec) return { error: `'${input.sgg_nm || ''}' 시군구를 찾을 수 없습니다.` };
-  const grids = ACCESS_GRIDS[rec.sgg_cd] || ACCESS_GRIDS[String(rec.sgg_cd)];
+  const grids = AG[String(rec.sgg_cd)];
   const region = `${rec.sido_nm_k} ${rec.sgg_nm_k}`;
   if (!grids || !grids.length) return { region, grid_count: 0, note: '충족 격자 데이터가 없습니다(전 시설 미충족 격자는 제외됨).' };
   const n = grids.length;
@@ -2883,8 +2900,8 @@ function _toolQueryAccessGrids(input) {
   });
   let totalMet = 0; for (let i = 0; i < n; i++) totalMet += popcount(grids[i][2]);
   return {
-    region, grid_count: n,
-    note: '0점(전 시설 미충족) 격자는 제외된 수치입니다. 격자 데이터는 최신 시점 기준이며 연도별 시계열이 아닙니다.',
+    region, year: y, grid_count: n,
+    note: '충족 시설이 있거나 인구가 있는 500m 격자 기준 수치입니다 (무인구·전 시설 미충족 격자 제외). year 파라미터로 연도 지정 가능.',
     avg_met_facilities: `${_round(totalMet / n, 2)} / 20`,
     sector_avg_met: secAvg,
     facilities
