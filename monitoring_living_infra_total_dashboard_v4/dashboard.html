@@ -64,6 +64,21 @@ body { background: var(--bg); color: var(--ink); margin: 0;
 .yr1-chip { display:inline-block; padding:1px 7px; border-radius:100px; background:#EEF2F7; color:#64748B; font-size:.7rem; font-weight:700; }
 .yr2-chip { display:inline-block; padding:1px 7px; border-radius:100px; background:var(--accent-sb); color:var(--accent); font-size:.7rem; font-weight:700; }
 
+/* ── 탭 내부 연도 셀렉터 (상세·비교) ───────────────────────────────── */
+.year-seg-local { display: inline-flex; gap: 2px; padding: 3px; background: var(--soft);
+                  border: 1px solid var(--line); border-radius: 100px; }
+.year-seg-local button { padding: 4px 14px; border: none; background: none; border-radius: 100px;
+                         cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--ink-2); transition: all .15s; }
+.year-seg-local button:hover:not(.active) { color: var(--ink); }
+.year-seg-local button.active { background: var(--accent); color: #fff; }
+
+/* ── 요약 TOP 표 펼치기 ────────────────────────────────────────────── */
+.mini-table-wrap.expanded { max-height: 460px; overflow-y: auto; }
+.expand-btn { display: block; width: 100%; margin-top: 8px; padding: 6px 0; border: 1px dashed var(--line);
+              background: var(--soft); border-radius: 6px; cursor: pointer; font-size: .76rem;
+              font-weight: 700; color: var(--ink-2); transition: all .15s; }
+.expand-btn:hover { background: var(--accent-sb); color: var(--accent); border-color: var(--accent-bd); }
+
 /* ── 변화분석 탭 ───────────────────────────────────────────────────── */
 .chg-layout { display: grid; grid-template-columns: 1fr 390px; gap: 14px; align-items: start; }
 #chg-map { height: calc(100vh - 265px); min-height: 460px; position: relative; }
@@ -465,7 +480,8 @@ select.form-select-sm { font-size: .82rem; }
     </div>
     <!-- 우측: 선택 지역 분석 결과 -->
     <div class="region-main">
-      <div style="margin-bottom:14px;min-height:24px">
+      <div style="margin-bottom:14px;min-height:32px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="year-seg-local" id="detail-year-seg"></div>
         <span class="badge-cnt" id="detail-rank-badge" style="display:none"></span>
       </div>
       <div id="detail-content" style="display:none">
@@ -478,10 +494,6 @@ select.form-select-sm { font-size: .82rem; }
             <div class="card-h">공급 · 향유 · 충족 수준 — 연도 비교</div>
             <div id="bar-chart" style="height:320px"></div>
           </div>
-        </div>
-        <div class="card card-p" style="margin-bottom:14px">
-          <div class="card-h">연도별 추이 <span style="font-weight:400;color:var(--ink-3);font-size:.72rem">(연도별 T점수 — 전국 내 상대적 위치)</span></div>
-          <div id="trend-chart" style="height:260px"></div>
         </div>
         <div class="card card-p">
           <div class="card-h">부문별 상세 지표</div>
@@ -502,6 +514,9 @@ select.form-select-sm { font-size: .82rem; }
   <div class="cmp-tab-layout">
     <!-- 좌측: 검색 + 시도 접이식 목록 -->
     <div class="card region-panel">
+      <div style="display:flex;justify-content:center;margin-bottom:8px">
+        <div class="year-seg-local" id="cmp-year-seg"></div>
+      </div>
       <div class="cmp-mode-bar">
         <button class="cmp-mode-btn active" data-mode="direct">직접선택</button>
         <button class="cmp-mode-btn" data-mode="pop">인구유사</button>
@@ -773,10 +788,10 @@ function renderOverview() {
   const sorted = [...RECORDS].sort((a, b) => (b.infra_idx || 0) - (a.infra_idx || 0));
   const top = sorted[0], bot = sorted[sorted.length - 1];
   const chg = computeChangeRows('infra_idx', Y1, Y2);
-  const bestUp   = [...chg].sort((a, b) => b.dr - a.dr || b.dv - a.dv)[0];
+  const bestUp    = [...chg].sort((a, b) => b.dr - a.dr || b.dv - a.dv)[0];
   const worstDown = [...chg].sort((a, b) => a.dr - b.dr || a.dv - b.dv)[0];
 
-  // 지역 카드 공통: Y2 값 + Y1 대비 Δ·순위변화
+  // KPI 카드: 지역명 + 한 줄 요약만 (간결)
   const regionCard = (label, rec, color) => {
     const v1 = valOf(Y1, rec.sgg_cd, 'infra_idx');
     const r1 = rankOf(Y1, 'infra_idx', rec.sgg_cd);
@@ -784,30 +799,22 @@ function renderOverview() {
     return `<div class="stat-card">
       <div class="stat-label">${label}</div>
       <div class="stat-val" style="font-size:1rem">${rec.sido_nm_k} ${rec.sgg_nm_k}</div>
-      <div class="stat-sub" style="color:${color}">${Y2}년 ${f1(rec.infra_idx)}점 ${deltaHtml(rec.infra_idx - v1)}</div>
-      <div class="stat-sub" style="margin-top:2px">${Y1}년 ${f1(v1)}점 · ${r1}위 → ${r2}위 ${rankDeltaHtml(r1, r2)}</div>
+      <div class="stat-sub" style="color:${color}">${f1(rec.infra_idx)}점 ${deltaHtml(v1 != null ? rec.infra_idx - v1 : null)} ${rankDeltaHtml(r1, r2)}</div>
     </div>`;
   };
-
-  const upCard = bestUp ? `<div class="stat-card">
-      <div class="stat-label">최대 상승 🚀</div>
-      <div class="stat-val" style="font-size:1rem">${bestUp.sido} ${bestUp.sgg}</div>
-      <div class="stat-sub" style="color:#DC2626">${bestUp.rank1}위 → ${bestUp.rank2}위 ${rankDeltaHtml(bestUp.rank1, bestUp.rank2)}</div>
-      <div class="stat-sub" style="margin-top:2px">${f1(bestUp.v1)} → ${f1(bestUp.v2)}점 ${deltaHtml(bestUp.dv)}</div>
-    </div>` : '';
-  const downCard = worstDown ? `<div class="stat-card">
-      <div class="stat-label">최대 하락 📉</div>
-      <div class="stat-val" style="font-size:1rem">${worstDown.sido} ${worstDown.sgg}</div>
-      <div class="stat-sub" style="color:#1D4ED8">${worstDown.rank1}위 → ${worstDown.rank2}위 ${rankDeltaHtml(worstDown.rank1, worstDown.rank2)}</div>
-      <div class="stat-sub" style="margin-top:2px">${f1(worstDown.v1)} → ${f1(worstDown.v2)}점 ${deltaHtml(worstDown.dv)}</div>
+  const moveCard = (label, m, color) => m ? `<div class="stat-card">
+      <div class="stat-label">${label}</div>
+      <div class="stat-val" style="font-size:1rem">${m.sido} ${m.sgg}</div>
+      <div class="stat-sub" style="color:${color}">${m.rank1}위 → ${m.rank2}위 ${rankDeltaHtml(m.rank1, m.rank2)}</div>
     </div>` : '';
 
   document.getElementById('summary-stats').innerHTML =
     regionCard(`최고 지역 🥇 (${Y2})`, top, '#16A34A') +
     regionCard(`최저 지역 ⚠️ (${Y2})`, bot, '#DC2626') +
-    upCard + downCard;
+    moveCard('최대 상승 🚀', bestUp, '#DC2626') +
+    moveCard('최대 하락 📉', worstDown, '#1D4ED8');
 
-  // Sector cards — Y1→Y2 평균 이동 + 대표 지역(최고·최저)의 Δ, 순위변화 1위
+  // Sector cards — 최고·최저(최신연도 값)와 순위 상승 1위만
   document.getElementById('sector-cards').innerHTML = Object.entries(SEC).map(([k, s]) => {
     const key = k + '_conv';
     const recs = RECORDS.filter(r => r[key] != null);
@@ -816,55 +823,55 @@ function renderOverview() {
     const botRec = sortedRecs[sortedRecs.length - 1];
     const secChg = computeChangeRows(key, Y1, Y2);
     const secUp = [...secChg].sort((a, b) => b.dr - a.dr || b.dv - a.dv)[0];
-    const regionRow = (icon, rec) => {
-      const d = rec[key] - (valOf(Y1, rec.sgg_cd, key) ?? rec[key]);
-      return `<div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="color:#94A3B8;white-space:nowrap">${icon}</span>
-        <span style="text-align:right"><strong style="color:#1E293B">${rec.sgg_nm_k}</strong>
-          <span style="color:${s.color};font-weight:600">${f1(rec[key])}</span> ${deltaHtml(d)}</span>
-      </div>`;
-    };
+    const row = (icon, name, valueHtml) => `<div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="color:#94A3B8;white-space:nowrap">${icon}</span>
+      <span style="text-align:right"><strong style="color:#1E293B">${name}</strong> ${valueHtml}</span>
+    </div>`;
     return `<div class="sector-card">
       <span class="sector-chip" style="background:${s.color}">${s.label}</span>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 8px">
-        <span style="font-size:.7rem;color:#94A3B8"><span class="yr1-chip">${Y1}</span>→<span class="yr2-chip">${Y2}</span></span>
-        <span style="font-size:.72rem;color:#64748B">전국범위 ${f1(sortedRecs[sortedRecs.length-1][key])}~${f1(sortedRecs[0][key])}</span>
-      </div>
-      <div style="font-size:.7rem;border-top:1px solid #F1F5F9;padding-top:6px;display:flex;flex-direction:column;gap:4px">
-        ${regionRow('🥇 최고', topRec)}
-        ${regionRow('⬇ 최저', botRec)}
-        ${secUp ? `<div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="color:#94A3B8;white-space:nowrap">🚀 상승1위</span>
-          <span style="text-align:right"><strong style="color:#1E293B">${secUp.sgg}</strong>
-            <span style="color:#64748B">${secUp.rank1}→${secUp.rank2}위</span> ${rankDeltaHtml(secUp.rank1, secUp.rank2)}</span>
-        </div>` : ''}
+      <div style="font-size:.7rem;border-top:1px solid #F1F5F9;margin-top:10px;padding-top:8px;display:flex;flex-direction:column;gap:5px">
+        ${row('🥇 최고', topRec.sgg_nm_k, `<span style="color:${s.color};font-weight:600">${f1(topRec[key])}</span>`)}
+        ${row('⬇ 최저', botRec.sgg_nm_k, `<span style="color:#94A3B8;font-weight:600">${f1(botRec[key])}</span>`)}
+        ${secUp ? row('🚀 상승1위', secUp.sgg, rankDeltaHtml(secUp.rank1, secUp.rank2)) : ''}
       </div>
     </div>`;
   }).join('');
 
-  // Top / Bottom 10 — Y1·Y2·Δ·순위변화 병기
-  function miniTable(rows) {
-    return `<table class="mini-table">
-      <thead><tr><th>#</th><th>시도</th><th>시군구</th><th>${Y1}</th><th>${Y2}</th><th>Δ</th><th>순위변화</th></tr></thead>
-      <tbody>${rows.slice(0, 10).map((r, i) => {
-        const c = colorFor(r.infra_idx, ...getRange('infra_idx'));
-        const v1 = valOf(Y1, r.sgg_cd, 'infra_idx');
-        const r1 = rankOf(Y1, 'infra_idx', r.sgg_cd);
-        const r2 = rankIn(RECORDS, 'infra_idx', r.infra_idx);
-        return `<tr>
-          <td style="color:#94A3B8">${i + 1}</td>
-          <td>${r.sido_nm_k}</td>
-          <td><strong>${r.sgg_nm_k}</strong></td>
-          <td style="color:#64748B">${f1(v1)}</td>
-          <td><span class="score-badge" style="background:${c}22;color:${c}">${f1(r.infra_idx)}</span></td>
-          <td>${deltaHtml(v1 != null ? r.infra_idx - v1 : null)}</td>
-          <td style="white-space:nowrap;color:#64748B">${r1 != null ? r1 + '→' + r2 + '위 ' : ''}${rankDeltaHtml(r1, r2)}</td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>`;
-  }
-  document.getElementById('top10').innerHTML = miniTable(sorted);
-  document.getElementById('bot10').innerHTML = miniTable([...sorted].reverse());
+  // Top / Bottom 표 — 컬럼 축소(최신 점수·Δ·순위변화) + 펼치기
+  const rankRow = (r, i) => {
+    const c = colorFor(r.infra_idx, ...getRange('infra_idx'));
+    const v1 = valOf(Y1, r.sgg_cd, 'infra_idx');
+    const r1 = rankOf(Y1, 'infra_idx', r.sgg_cd);
+    const r2 = rankIn(RECORDS, 'infra_idx', r.infra_idx);
+    return `<tr>
+      <td style="color:#94A3B8">${i + 1}</td>
+      <td>${r.sido_nm_k}</td>
+      <td><strong>${r.sgg_nm_k}</strong></td>
+      <td><span class="score-badge" style="background:${c}22;color:${c}">${f1(r.infra_idx)}</span></td>
+      <td>${deltaHtml(v1 != null ? r.infra_idx - v1 : null)}</td>
+      <td style="white-space:nowrap">${rankDeltaHtml(r1, r2)}</td>
+    </tr>`;
+  };
+  const miniTable = (rows, expanded) => `
+    <div class="mini-table-wrap${expanded ? ' expanded' : ''}">
+      <table class="mini-table">
+        <thead><tr><th>#</th><th>시도</th><th>시군구</th><th>${Y2}년</th><th>Δ</th><th>순위변화</th></tr></thead>
+        <tbody>${rows.slice(0, expanded ? rows.length : 10).map(rankRow).join('')}</tbody>
+      </table>
+    </div>
+    <button class="expand-btn">${expanded ? '접기 ▲' : `전체 ${rows.length}개 펼치기 ▼`}</button>`;
+
+  const renderRankTable = (elId, rows) => {
+    const el = document.getElementById(elId);
+    let expanded = false;
+    const draw = () => {
+      el.innerHTML = miniTable(rows, expanded);
+      el.querySelector('.expand-btn').addEventListener('click', () => { expanded = !expanded; draw(); });
+    };
+    draw();
+  };
+  renderRankTable('top10', sorted);
+  renderRankTable('bot10', [...sorted].reverse());
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1363,9 +1370,28 @@ function closeMapSheet() {
 // ══════════════════════════════════════════════════════════════════════════════
 // TAB 3 : 시군구 상세
 // ══════════════════════════════════════════════════════════════════════════════
-let radarChart = null, barChart = null, trendChart = null;
+let radarChart = null, barChart = null;
+let detailYear = String(Y2);   // 상세 탭 표시 연도
+
+function renderDetailYearSeg() {
+  const seg = document.getElementById('detail-year-seg');
+  seg.innerHTML = YEAR_LIST.map(y =>
+    `<button class="${y === detailYear ? 'active' : ''}" data-y="${y}">${y}년</button>`).join('');
+}
 
 function initDetail() {
+  renderDetailYearSeg();
+  document.getElementById('detail-year-seg').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b || b.dataset.y === detailYear) return;
+    detailYear = b.dataset.y;
+    renderDetailYearSeg();
+    if (detailSelCd != null) {
+      const r = findIn(recsOf(detailYear), detailSelCd);
+      if (r) renderDetail(r);
+    }
+  });
+
   const hier = {};
   RECORDS.forEach(r => { (hier[r.sido_nm_k] = hier[r.sido_nm_k] || []).push(r); });
   Object.values(hier).forEach(arr => arr.sort((a, b) => a.sgg_nm_k.localeCompare(b.sgg_nm_k, 'ko')));
@@ -1422,52 +1448,42 @@ function renderDetail(rec) {
   document.getElementById('detail-placeholder').style.display = 'none';
 
   detailSelCd = rec.sgg_cd;
-  const rank = natRank('infra_idx', rec.infra_idx);
-  const pct  = upperPct('infra_idx', rec.infra_idx);
-  // 직전 연도 대비 순위 변화 배지
-  const yi = YEAR_LIST.indexOf(CUR_YEAR);
-  const prevY = yi > 0 ? YEAR_LIST[yi - 1] : null;
-  let rankDelta = '';
-  if (prevY) {
-    const prevRank = rankOf(prevY, 'infra_idx', rec.sgg_cd);
-    if (prevRank) {
-      const d = prevRank - rank;   // +면 순위 상승
-      const cls = d > 0 ? 'rank-delta-up' : d < 0 ? 'rank-delta-down' : 'rank-delta-flat';
-      const arrow = d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : '—';
-      rankDelta = ` | ${prevY}년 ${prevRank}위 → <span class="${cls}">${arrow}</span>`;
-    }
-  }
+  // 선택 연도 레코드 기준으로 표시
+  const R = recsOf(detailYear);
+  const ry = findIn(R, rec.sgg_cd) || rec;
+
+  const rank = rankIn(R, 'infra_idx', ry.infra_idx);
+  const pct  = _pctIn(R, 'infra_idx', ry.infra_idx);
   document.getElementById('detail-rank-badge').style.display = 'inline-block';
   document.getElementById('detail-rank-badge').innerHTML =
-    `${rec.sido_nm_k} ${rec.sgg_nm_k} · ${CUR_YEAR}년 종합지수 ${f1(rec.infra_idx)}점 | 전국 ${rank}위 / ${RECORDS.length} (상위 ${pct}%)${rankDelta}`;
+    `${ry.sido_nm_k} ${ry.sgg_nm_k} · ${detailYear}년 종합지수 ${f1(ry.infra_idx)}점 | 전국 ${rank}위 / ${R.length} (상위 ${pct}%)`;
 
   const secKeys = Object.keys(SEC);
   const secLabels = secKeys.map(k => SEC[k].label);
   // 레이더 부문 순서: 시계방향이 표 순서(교육→돌봄→보건→안전→체육)가 되도록 꼬리 역순
   const radarKeys = [secKeys[0], ...secKeys.slice(1).reverse()];
   const radarLabels = radarKeys.map(k => SEC[k].label);
-  const convOf = y => radarKeys.map(k => +((valOf(y, rec.sgg_cd, k + '_conv') ?? 0)).toFixed(3));
-  const conv1 = convOf(Y1), conv2 = convOf(Y2);
+  const recConv = radarKeys.map(k => +(ry[k + '_conv'] || 0).toFixed(3));
 
-  // 시도 평균 (최신연도 기준)
-  const sidoPeers = RECORDS.filter(r => r.sido_nm_k === rec.sido_nm_k);
+  // 시도 평균 (선택 연도 기준)
+  const sidoPeers = R.filter(r => r.sido_nm_k === ry.sido_nm_k);
   const sidoAvg = radarKeys.map(k => {
     const vals = sidoPeers.map(r => r[k + '_conv']).filter(v => v != null);
     return +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(3);
   });
 
-  // 레이더 축 범위: 실제 그려지는 값(두 연도 + 시도평균)에 타이트하게 + 여백 35%
-  const drawnVals = [...conv1, ...conv2, ...sidoAvg];
+  // 레이더 축 범위: 실제 그려지는 값에 타이트하게 + 여백 35%
+  const drawnVals = [...recConv, ...sidoAvg];
   const _mnC = Math.min(...drawnVals), _mxC = Math.max(...drawnVals);
   const _pad = Math.max((_mxC - _mnC) * 0.35, 3);
   const radarMin = Math.floor(_mnC - _pad);
   const radarMax = Math.ceil(_mxC + _pad);
 
-  // Radar — 선택 지역 Y1(점선) vs Y2(실선) + 시도 평균(최신)
+  // Radar — 선택 지역 vs 시도 평균 (선택 연도)
   if (!radarChart) radarChart = echarts.init(document.getElementById('radar-chart'));
   radarChart.setOption({
     tooltip: { trigger: 'item' },
-    legend: { data: [`${Y1}년`, `${Y2}년`, `${rec.sido_nm_k} 평균(${Y2})`], bottom: 0, textStyle: { fontSize: 11 } },
+    legend: { data: ['선택 지역', `${ry.sido_nm_k} 평균`], bottom: 0, textStyle: { fontSize: 11 } },
     radar: {
       indicator: radarLabels.map(name => ({ name, max: radarMax, min: radarMin })),
       radius: '62%',
@@ -1477,17 +1493,15 @@ function renderDetail(rec) {
     series: [{
       type: 'radar',
       data: [
-        { value: conv1, name: `${Y1}년`,
-          lineStyle: { color: '#94A3B8', width: 1.5, type: 'dashed' }, itemStyle: { color: '#94A3B8' }, areaStyle: { color: 'rgba(148,163,184,.10)' } },
-        { value: conv2, name: `${Y2}년`,
-          lineStyle: { color: '#2563EB', width: 2.5 }, itemStyle: { color: '#2563EB' }, areaStyle: { color: 'rgba(37,99,235,.18)' } },
-        { value: sidoAvg, name: `${rec.sido_nm_k} 평균(${Y2})`,
-          lineStyle: { color: '#F59E0B', width: 1.2, type: 'dotted' }, itemStyle: { color: '#F59E0B' } },
+        { value: recConv, name: '선택 지역',
+          lineStyle: { color: '#2563EB', width: 2 }, itemStyle: { color: '#2563EB' }, areaStyle: { color: 'rgba(37,99,235,.18)' } },
+        { value: sidoAvg, name: `${ry.sido_nm_k} 평균`,
+          lineStyle: { color: '#F59E0B', width: 1.5, type: 'dashed' }, itemStyle: { color: '#F59E0B' }, areaStyle: { color: 'rgba(245,158,11,.1)' } },
       ]
     }]
   }, true);
 
-  // Bar — 부문×세부지수, 연도쌍 (Y1 연한색 · Y2 진한색)
+  // Bar — 공급·향유·충족 (선택 연도)
   if (!barChart) barChart = echarts.init(document.getElementById('bar-chart'));
   const dims = [
     { sfx: 'sup', label: '공급수준', color: '#60A5FA' },
@@ -1497,82 +1511,46 @@ function renderDetail(rec) {
   barChart.setOption({
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     legend: {
-      data: dims.flatMap(d => [`${d.label} ${Y1}`, `${d.label} ${Y2}`]),
-      bottom: 0, textStyle: { fontSize: 9 }, itemWidth: 10, itemHeight: 8,
+      data: dims.map(d => d.label),
+      bottom: 0, textStyle: { fontSize: 10 }, itemWidth: 12, itemHeight: 10,
     },
     xAxis: { data: secLabels, axisLabel: { interval: 0, fontSize: 11 } },
-    yAxis: { type: 'value', axisLabel: { fontSize: 10 }, scale: true },
-    grid: { bottom: 44 },
-    series: dims.flatMap(d => [
-      { name: `${d.label} ${Y1}`, type: 'bar', barGap: '0%', barCategoryGap: '28%',
-        itemStyle: { color: d.color, opacity: .38 },
-        data: secKeys.map(k => +((valOf(Y1, rec.sgg_cd, k + '_' + d.sfx) ?? 0)).toFixed(3)) },
-      { name: `${d.label} ${Y2}`, type: 'bar',
-        itemStyle: { color: d.color },
-        data: secKeys.map(k => +((valOf(Y2, rec.sgg_cd, k + '_' + d.sfx) ?? 0)).toFixed(3)) },
-    ])
+    yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
+    grid: { bottom: 40 },
+    series: dims.map(d => ({
+      name: d.label, type: 'bar', barGap: '10%',
+      itemStyle: { color: d.color },
+      data: secKeys.map(k => +(ry[k + '_' + d.sfx] || 0).toFixed(3)),
+    }))
   }, true);
 
-  // Detail table — 연도쌍 + Δ + 순위변화
+  // Detail table — 선택 연도 값
   const tableRows = secKeys.map(k => {
     const s = SEC[k];
     const key = k + '_conv';
-    const cv1 = valOf(Y1, rec.sgg_cd, key);
-    const cv2 = rec[key];
-    const rk1 = rankOf(Y1, key, rec.sgg_cd);
-    const rk2 = natRank(key, cv2);
-    const p = upperPct(key, cv2);
-    const [mn, mx] = getRange(key);
-    const c = colorFor(cv2, mn, mx);
-    const subCell = sfx => {
-      const a = valOf(Y1, rec.sgg_cd, k + '_' + sfx), b = valOf(Y2, rec.sgg_cd, k + '_' + sfx);
-      return `${f1(b)} <span style="font-size:.7rem">${deltaHtml(a != null && b != null ? b - a : null)}</span>`;
-    };
+    const cv = ry[key];
+    const rk = rankIn(R, key, cv);
+    const p = _pctIn(R, key, cv);
+    const vals = R.map(r => r[key]).filter(v => v != null && !isNaN(+v));
+    const c = colorFor(cv, Math.min(...vals), Math.max(...vals));
     return `<tr>
       <td><span class="sector-chip" style="background:${s.color}">${s.label}</span></td>
-      <td style="color:#64748B">${f1(cv1)}</td>
-      <td><span class="score-badge" style="background:${c}22;color:${c}">${f1(cv2)}</span></td>
-      <td>${deltaHtml(cv1 != null && cv2 != null ? cv2 - cv1 : null)}</td>
-      <td style="color:#64748B;font-size:.8rem;white-space:nowrap">${rk2}위 (상위 ${p}%) ${rankDeltaHtml(rk1, rk2)}</td>
-      <td>${subCell('sup')}</td>
-      <td>${subCell('pop')}</td>
-      <td>${subCell('acc')}</td>
+      <td><span class="score-badge" style="background:${c}22;color:${c}">${f1(cv)}</span></td>
+      <td style="color:#64748B;font-size:.8rem">${rk}위 (상위 ${p}%)</td>
+      <td>${f1(ry[k + '_sup'])}</td>
+      <td>${f1(ry[k + '_pop'])}</td>
+      <td>${f1(ry[k + '_acc'])}</td>
     </tr>`;
   }).join('');
 
   document.getElementById('detail-table').innerHTML = `
     <table class="mini-table">
       <thead><tr>
-        <th>부문</th><th>편리성 ${Y1}</th><th>편리성 ${Y2}</th><th>Δ</th><th>전국 순위 (${Y2})</th>
+        <th>부문</th><th>편리성 지수</th><th>전국 순위</th>
         <th>공급수준</th><th>향유수준</th><th>충족수준</th>
       </tr></thead>
       <tbody>${tableRows}</tbody>
-    </table>
-    <div style="font-size:.68rem;color:var(--ink-3);margin-top:6px">공급·향유·충족은 ${Y2}년 값 (괄호 Δ = ${Y1} 대비)</div>`;
-
-  // 연도별 추이 (종합 + 5개 부문 편리성)
-  if (!trendChart) trendChart = echarts.init(document.getElementById('trend-chart'));
-  const trendDefs = [
-    { name: '종합', key: 'infra_idx', color: '#1E293B', width: 3 },
-    ...secKeys.map(k => ({ name: SEC[k].label, key: k + '_conv', color: SEC[k].color, width: 1.5 }))
-  ];
-  trendChart.setOption({
-    tooltip: { trigger: 'axis', valueFormatter: v => v == null ? '-' : (+v).toFixed(1) },
-    legend: { bottom: 0, textStyle: { fontSize: 10 }, itemWidth: 12, itemHeight: 8 },
-    grid: { top: 22, left: 42, right: 18, bottom: 44 },
-    xAxis: { type: 'category', data: YEAR_LIST, boundaryGap: false, axisLabel: { fontSize: 11 } },
-    yAxis: { type: 'value', scale: true, axisLabel: { fontSize: 10 } },
-    series: trendDefs.map(t => ({
-      name: t.name, type: 'line', symbol: 'circle', symbolSize: 7,
-      data: YEAR_LIST.map(y => {
-        const r = findIn(recsOf(y), rec.sgg_cd);
-        return r && r[t.key] != null ? +(+r[t.key]).toFixed(2) : null;
-      }),
-      lineStyle: { color: t.color, width: t.width },
-      itemStyle: { color: t.color },
-      emphasis: { focus: 'series' }
-    }))
-  }, true);
+    </table>`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1581,6 +1559,13 @@ function renderDetail(rec) {
 let cmpChart = null, cmpBarChart = null;
 let cmpMode = 'direct'; // 'direct' | 'pop' | 'area'
 let cmpSel = [];        // 선택된 시군구 sgg_cd 목록 (직접:최대2, 유사:1)
+let cmpYear = String(Y2);   // 비교 탭 표시 연도
+
+function renderCmpYearSeg() {
+  const seg = document.getElementById('cmp-year-seg');
+  seg.innerHTML = YEAR_LIST.map(y =>
+    `<button class="${y === cmpYear ? 'active' : ''}" data-y="${y}">${y}년</button>`).join('');
+}
 const CMP_COLORS = ['#2563EB', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6'];
 
 // 시도→시군구 접이식 목록 HTML (상세/비교 공용 구조)
@@ -1618,6 +1603,15 @@ function filterRegionTree(root, q) {
 }
 
 function initRanking() {
+  renderCmpYearSeg();
+  document.getElementById('cmp-year-seg').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b || b.dataset.y === cmpYear) return;
+    cmpYear = b.dataset.y;
+    renderCmpYearSeg();
+    renderComparison();
+  });
+
   const listEl = document.getElementById('cmp-region-list');
   listEl.innerHTML = regionListHtml();
 
@@ -1699,7 +1693,8 @@ function fNum(v) {
 function renderComparison() {
   const content = document.getElementById('cmp-content');
   const ph = document.getElementById('cmp-placeholder');
-  const base = cmpSel.length ? RECORDS.find(r => String(r.sgg_cd) === cmpSel[0]) : null;
+  const R = recsOf(cmpYear);   // 선택 연도 레코드
+  const base = cmpSel.length ? R.find(r => String(r.sgg_cd) === cmpSel[0]) : null;
   const ready = !!base;   // 1곳만 선택해도 바로 펼쳐 보여주고, 2번째를 더하면 비교가 된다
   if (!ready) {
     content.style.display = 'none';
@@ -1721,43 +1716,32 @@ function renderComparison() {
 
   let compareList = []; // 비교할 지역 목록 (base 제외)
   if (cmpMode === 'direct') {
-    const b = RECORDS.find(r => String(r.sgg_cd) === cmpSel[1]);
+    const b = R.find(r => String(r.sgg_cd) === cmpSel[1]);
     if (b) compareList = [b];
   } else {
     const simKey = cmpMode === 'pop' ? 'popall' : 'area';
-    compareList = findSimilar(base, simKey, 4);
+    compareList = findSimilar(base, simKey, 4, R);
   }
 
   // 지역 표시명: 시도 + 시군구 (중복 이름 구분)
   const rName = r => r.sido_nm_k + ' ' + r.sgg_nm_k;
 
   const allRegions = [base, ...compareList];
-  // 직접선택(≤2곳)일 때만 연도 오버레이 — 유사 5곳 모드는 최신연도만 (가독성)
-  const overlayYears = cmpMode === 'direct';
-
-  const convY = (r, y, k) => valOf(y, r.sgg_cd, k + '_conv');
-  // 축 범위: 그려지는 모든 값(오버레이면 두 연도)에 타이트하게 + 여백 35%
-  const drawnVals = allRegions.flatMap(r => secKeys.flatMap(k =>
-    overlayYears ? [convY(r, Y1, k), convY(r, Y2, k)] : [convY(r, Y2, k)]
-  ).filter(v => v != null));
+  // 축 범위: 비교 지역들의 실제 값에 타이트하게 + 여백 35%
+  const drawnVals = allRegions.flatMap(r => secKeys.map(k => r[k + '_conv']).filter(v => v != null));
   const _mnC = Math.min(...drawnVals), _mxC = Math.max(...drawnVals);
   const _pad = Math.max((_mxC - _mnC) * 0.35, 3);
   const radarMin = Math.floor(_mnC - _pad);
   const radarMax = Math.ceil(_mxC + _pad);
 
-  // ── 레이더 차트 ── (오버레이: 지역별 Y1 점선 + Y2 실선)
-  const radarData = allRegions.flatMap((r, i) => {
-    const y2 = { value: radarKeys.map(k => +(convY(r, Y2, k) ?? 0).toFixed(3)),
-                 name: overlayYears ? `${rName(r)} ${Y2}` : rName(r),
-                 lineStyle: { color: COLORS[i], width: 2.2 }, itemStyle: { color: COLORS[i] },
-                 areaStyle: { opacity: i === 0 ? .18 : .07 } };
-    if (!overlayYears) return [y2];
-    const y1 = { value: radarKeys.map(k => +(convY(r, Y1, k) ?? 0).toFixed(3)),
-                 name: `${rName(r)} ${Y1}`,
-                 lineStyle: { color: COLORS[i], width: 1.3, type: 'dashed', opacity: .55 },
-                 itemStyle: { color: COLORS[i], opacity: .55 } };
-    return [y1, y2];
-  });
+  // ── 레이더 차트 (선택 연도) ──
+  const radarData = allRegions.map((r, i) => ({
+    value: radarKeys.map(k => +(r[k + '_conv'] || 0).toFixed(3)),
+    name: rName(r),
+    lineStyle: { color: COLORS[i] },
+    itemStyle: { color: COLORS[i] },
+    areaStyle: { opacity: i === 0 ? .2 : .07 }
+  }));
 
   if (!cmpChart) cmpChart = echarts.init(document.getElementById('cmp-radar'));
   cmpChart.setOption({
@@ -1771,25 +1755,19 @@ function renderComparison() {
     series: [{ type: 'radar', data: radarData }]
   }, true);
 
-  // ── 막대 차트 (5개 부문, 지역×연도 그룹) ──
+  // ── 막대 차트 (5개 부문, 선택 연도) ──
   if (!cmpBarChart) cmpBarChart = echarts.init(document.getElementById('cmp-bar'));
-  const barSeries = allRegions.flatMap((r, i) => {
-    const y2 = { name: overlayYears ? `${rName(r)} ${Y2}` : rName(r), type: 'bar',
-                 data: secKeys.map(k => +(convY(r, Y2, k) ?? 0).toFixed(1)),
-                 itemStyle: { color: COLORS[i] } };
-    if (!overlayYears) return [y2];
-    const y1 = { name: `${rName(r)} ${Y1}`, type: 'bar', barGap: '0%',
-                 data: secKeys.map(k => +(convY(r, Y1, k) ?? 0).toFixed(1)),
-                 itemStyle: { color: COLORS[i], opacity: .38 } };
-    return [y1, y2];
-  });
   cmpBarChart.setOption({
     tooltip: { trigger: 'axis' },
-    legend: { data: barSeries.map(s => s.name), bottom: 0, textStyle: { fontSize: 10 }, itemWidth: 10 },
+    legend: { data: allRegions.map(rName), bottom: 0, textStyle: { fontSize: 10 }, itemWidth: 10 },
     grid: { left: 44, right: 14, top: 18, bottom: 54 },
     xAxis: { type: 'category', data: secLabels, axisLabel: { fontSize: 11 } },
     yAxis: { type: 'value', min: radarMin, max: radarMax },
-    series: barSeries
+    series: allRegions.map((r, i) => ({
+      name: rName(r), type: 'bar',
+      data: secKeys.map(k => +(r[k + '_conv'] || 0).toFixed(1)),
+      itemStyle: { color: COLORS[i] }
+    }))
   }, true);
 
   // 비교 테이블
@@ -1812,23 +1790,17 @@ function renderComparison() {
     </tr>`;
   }
 
-  // 셀: Y2 값(+기준지역 대비) 위, 아래에 Y1→Y2 자체 변화
-  const yearCell = (r, key, baseV2, isBase) => {
-    const v1 = valOf(Y1, r.sgg_cd, key), v2 = valOf(Y2, r.sgg_cd, key);
-    const baseDiff = isBase || v2 == null || baseV2 == null ? '' : (() => {
-      const d = v2 - baseV2;
-      const col = d > 0 ? '#16A34A' : d < 0 ? '#DC2626' : '#94A3B8';
-      return `<span style="font-size:.72rem;color:${col};margin-left:3px">${d > 0 ? '+' : ''}${d.toFixed(1)}</span>`;
-    })();
-    return `<td>${f1(v2)}${baseDiff}
-      <div style="font-size:.68rem;color:#94A3B8;white-space:nowrap">${Y1}: ${f1(v1)} ${deltaHtml(v1 != null && v2 != null ? v2 - v1 : null)}</div></td>`;
-  };
-
   const sectorRows = secKeys.map(k => {
     const s = SEC[k];
-    const key = k + '_conv';
-    const baseV2 = valOf(Y2, base.sgg_cd, key);
-    const cells = allRegions.map((r, i) => yearCell(r, key, baseV2, i === 0)).join('');
+    const vals = allRegions.map(r => r[k + '_conv']);
+    const cells = vals.map((v, i) => {
+      const diff = i === 0 ? '' : (() => {
+        const d = ((v || 0) - (vals[0] || 0));
+        const col = d > 0 ? '#16A34A' : d < 0 ? '#DC2626' : '#94A3B8';
+        return `<span style="font-size:.72rem;color:${col};margin-left:3px">${d > 0 ? '+' : ''}${d.toFixed(1)}</span>`;
+      })();
+      return `<td>${f1(v)}${diff}</td>`;
+    }).join('');
     return `<tr>
       <td><span class="sector-chip" style="background:${s.color}">${s.label}</span></td>
       ${cells}
@@ -1836,8 +1808,15 @@ function renderComparison() {
   }).join('');
 
   const totalRow = (() => {
-    const baseV2 = valOf(Y2, base.sgg_cd, 'infra_idx');
-    const cells = allRegions.map((r, i) => yearCell(r, 'infra_idx', baseV2, i === 0)).join('');
+    const vals = allRegions.map(r => r.infra_idx);
+    const cells = vals.map((v, i) => {
+      const diff = i === 0 ? '' : (() => {
+        const d = ((v || 0) - (vals[0] || 0));
+        const col = d > 0 ? '#16A34A' : d < 0 ? '#DC2626' : '#94A3B8';
+        return `<span style="font-size:.72rem;color:${col};margin-left:3px">${d > 0 ? '+' : ''}${d.toFixed(1)}</span>`;
+      })();
+      return `<td style="font-weight:700">${f1(v)}${diff}</td>`;
+    }).join('');
     return `<tr style="background:#F8FAFC"><td style="font-weight:700">종합지수</td>${cells}</tr>`;
   })();
 
