@@ -149,6 +149,8 @@ body { background: var(--bg); color: var(--ink); margin: 0;
 
 /* ── 듀얼 맵 ───────────────────────────────────────────────────────── */
 .map-dual { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.map-dual.single { grid-template-columns: 1fr; }
+.map-dual.single .map-cell:not(.latest) { display: none; }
 .map-cell { position: relative; overflow: hidden; }
 .map-cell .map-year-chip { position: absolute; left: 10px; top: 10px; z-index: 6;
   background: rgba(60,75,100,.92); color: #fff; font-size: .78rem; font-weight: 700;
@@ -530,6 +532,10 @@ select.form-select-sm { font-size: .82rem; }
       <!-- 시도 → 시군구 연동 선택 -->
       <div class="card card-p" style="padding:10px 14px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="year-seg-local" id="map-mode-seg">
+            <button data-m="compare" class="active">🆚 연도 비교</button>
+            <button data-m="detail">🔎 상세보기</button>
+          </div>
           <span style="font-size:.75rem;color:var(--ink-2);font-weight:700">📍 지역 선택</span>
           <select id="map-sido-sel" class="form-select form-select-sm" style="width:auto;min-width:130px"><option value="">시도 전체</option></select>
           <select id="map-sgg-sel" class="form-select form-select-sm" style="width:auto;min-width:150px" disabled><option value="">시군구</option></select>
@@ -551,6 +557,13 @@ select.form-select-sm { font-size: .82rem; }
               차량 등으로 접근하는 거점 단위 시설<br>
               <span style="color:var(--ink-2)">종합병원·경찰서·소방서·종합사회복지관·공공체육시설 등</span><br><br>
               <span style="color:var(--ink-3)">ⓘ 클릭 시 시설별 기준·산출 방식 전체가 열립니다.</span>
+            </span>
+          </span>
+          <span id="grid-color-ctrl" style="display:none;align-items:center;gap:4px;font-size:.72rem;color:var(--ink-2);font-weight:700">
+            격자 색상
+            <span class="year-seg-local" style="padding:2px">
+              <button id="gcm-score" class="active" style="padding:2px 9px;font-size:.72rem">충족점수</button>
+              <button id="gcm-pop" style="padding:2px 9px;font-size:.72rem">인구</button>
             </span>
           </span>
           <span id="grid-opacity-ctrl" style="display:none;align-items:center;gap:6px;font-size:.72rem;color:var(--ink-2);font-weight:700">
@@ -992,8 +1005,12 @@ const VWORLD_KEY = '6D2A7A4B-CB1D-3574-8FD8-331C8254D8F9';
 let _colorScale = null, _qBreaks = [], _mn = 0, _mx = 1; // 색상 분류 상태
 
 // ── 충족격자(access) ─────────────────────────────────────────────────────────
+let mapMode = 'compare';        // 'compare'(듀얼 연도 비교) | 'detail'(단일 최신연도 상세)
 let gridLayerOn = false;
 let gridOpacity = 0.9;
+let gridColorMode = 'score';    // 'score'(충족점수) | 'pop'(격자 인구)
+let _gridPopMax = 1;            // 현재 시군구 격자 인구 스케일 상한 (95분위)
+const POP_SCALE = chroma.scale(['#BFDBFE', '#60A5FA', '#2563EB', '#1E3A8A']);
 // (컬럼키, 한글명, 부문)  비트 i = 인덱스 (make_access_grids.py와 동일 순서 필수)
 const FACILITIES = [
   ['daycar','어린이집','edu'],['kinder','유치원','edu'],['elem','초등학교','edu'],['smlib','작은도서관','edu'],
@@ -1201,13 +1218,23 @@ function buildMapLayers(year) {
   }
   if (showGrid && highlightSggCd != null && typeof ACCESS_GRIDS !== 'undefined') {
     const raw = ACCESS_GRIDS[String(highlightSggCd)] || [];
-    const gdata = raw.map(a => ({ position: [a[0], a[1]], mask: a[2], score: popcount(a[2]) }));
+    const gdata = raw.map(a => ({ position: [a[0], a[1]], mask: a[2], score: popcount(a[2]), pop: a[3] || 0 }));
+    // 인구 색상 스케일 상한: 해당 시군구 격자 인구 95분위 (극단값 완화)
+    const pops = gdata.map(d => d.pop).filter(v => v > 0).sort((x, y) => x - y);
+    _gridPopMax = pops.length ? Math.max(1, pops[Math.floor(pops.length * 0.95)]) : 1;
     layers.push(new deck.ScatterplotLayer({
       id: 'access-grids', data: gdata, getPosition: d => d.position, opacity: gridOpacity,
       getRadius: 230, radiusUnits: 'meters', radiusMinPixels: 2, radiusMaxPixels: 16,
-      getFillColor: d => { const c = GRID_SCALE(d.score).rgb(); return [c[0], c[1], c[2], 235]; },
+      getFillColor: d => {
+        if (gridColorMode === 'pop') {
+          if (!d.pop) return [203, 213, 225, 140];
+          const c = POP_SCALE(Math.min(1, d.pop / _gridPopMax)).rgb();
+          return [c[0], c[1], c[2], 235];
+        }
+        const c = GRID_SCALE(d.score).rgb(); return [c[0], c[1], c[2], 235];
+      },
       stroked: true, getLineColor: [255, 255, 255, 150], lineWidthMinPixels: 0.3,
-      pickable: true, updateTriggers: { getFillColor: [highlightSggCd] }
+      pickable: true, updateTriggers: { getFillColor: [highlightSggCd, gridColorMode] }
     }));
   }
 
@@ -1252,8 +1279,9 @@ function updateGridDetail(d) {
   if (!d) { div.style.display = 'none'; div.innerHTML = ''; return; }
   const bySec = { edu: [], care: [], med: [], safe: [], cult: [] };
   FACILITIES.forEach((f, i) => { bySec[f[2]].push({ kor: f[1], on: (d.mask >> i) & 1 }); });
-  let html = `<div class="leg-title" style="margin-bottom:6px">
-    선택 격자 · 충족 <span style="color:var(--ink)">${d.score}</span>/20</div>`;
+  let html = `<div class="leg-title" style="margin-bottom:2px">
+    선택 격자 · 충족 <span style="color:var(--ink)">${d.score}</span>/20</div>
+    <div style="font-size:.72rem;color:var(--ink-2);margin-bottom:6px">👥 격자 인구(${typeof ACCESS_GRIDS_POP_YEAR !== 'undefined' ? ACCESS_GRIDS_POP_YEAR : Y2}): <b style="color:var(--ink)">${(d.pop || 0).toLocaleString()}명</b></div>`;
   SECTOR_ORDER.forEach((sk, idx) => {
     const s = SEC[sk];
     const onCnt = bySec[sk].filter(it => it.on).length;
@@ -1375,10 +1403,12 @@ function initMap() {
     btn.style.borderColor = on ? 'var(--accent-bd)' : '';
     btn.style.fontWeight  = on ? '700' : '';
   }
+  const gridColorCtrl = document.getElementById('grid-color-ctrl');
   function updateGridBtnUI() {
     gridToggleBtn.textContent = '📊 충족격자';
     chipStyle(gridToggleBtn, gridLayerOn);
     gridOpacityCtrl.style.display = gridLayerOn ? 'inline-flex' : 'none';
+    gridColorCtrl.style.display = gridLayerOn ? 'inline-flex' : 'none';
     if (!gridLayerOn) updateGridDetail(null);
   }
   function updateLayerChipUI() {
@@ -1387,7 +1417,9 @@ function initMap() {
     facSel.style.display = (poiOn || svcOn) ? '' : 'none';   // POI·서비스권역 공용 시설 선택
   }
   const gridInfoWrap = document.getElementById('grid-info-wrap');
+  // 레이어 칩은 상세보기 모드 + 시군구 선택 시에만 노출
   function showGridToggle(on) {
+    on = on && mapMode === 'detail';
     if (!on) {
       gridLayerOn = false; updateGridBtnUI();
       poiOn = false; svcOn = false; updateLayerChipUI();
@@ -1396,9 +1428,51 @@ function initMap() {
     gridInfoWrap.style.display = on ? 'inline-flex' : 'none';
     layerChips.style.display = on ? 'inline-flex' : 'none';
   }
+  // 상세보기 모드에서 시군구 선택 → 격자·서비스권역 자동 활성화
+  function autoEnableDetailLayers() {
+    if (mapMode !== 'detail' || highlightSggCd == null) return;
+    gridLayerOn = true; svcOn = true;
+    updateGridBtnUI(); updateLayerChipUI();
+    refreshOverlayLayers();
+  }
   gridToggleBtn.addEventListener('click', () => {
     if (highlightSggCd == null) return;
     gridLayerOn = !gridLayerOn; updateGridBtnUI(); renderChoropleth();
+  });
+  document.getElementById('gcm-score').addEventListener('click', () => {
+    gridColorMode = 'score';
+    document.getElementById('gcm-score').classList.add('active');
+    document.getElementById('gcm-pop').classList.remove('active');
+    renderChoropleth();
+  });
+  document.getElementById('gcm-pop').addEventListener('click', () => {
+    gridColorMode = 'pop';
+    document.getElementById('gcm-pop').classList.add('active');
+    document.getElementById('gcm-score').classList.remove('active');
+    renderChoropleth();
+  });
+
+  // ── 지도 모드 전환 (연도 비교 ↔ 상세보기) ──
+  const modeSeg = document.getElementById('map-mode-seg');
+  function setMapMode(m) {
+    if (m === mapMode) return;
+    mapMode = m;
+    modeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.m === m));
+    document.querySelector('.map-dual').classList.toggle('single', m === 'detail');
+    document.getElementById('map-chip-y2').textContent = Y2 + '년' + (m === 'detail' ? ' · 상세보기' : '');
+    if (m === 'compare') {
+      showGridToggle(false);
+      renderChoropleth();
+    } else {
+      showGridToggle(highlightSggCd != null);
+      if (highlightSggCd != null) autoEnableDetailLayers();
+      else renderChoropleth();
+    }
+    setTimeout(() => { deckMap && deckMap.redraw(true); deckMap1 && deckMap1.redraw(true); }, 90);
+  }
+  modeSeg.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b) setMapMode(b.dataset.m);
   });
   poiBtn.addEventListener('click', () => {
     if (highlightSggCd == null) return;
@@ -1451,8 +1525,9 @@ function initMap() {
     const ft = GEOJSON.features.find(f => String(f.properties.sgg_cd) === String(cd));
     if (!ft) return;
     highlightSggCd = ft.properties.sgg_cd;
-    showGridToggle(true);    // 시군구 선택 → 격자 토글 노출
+    showGridToggle(true);    // 시군구 선택 → 레이어 칩 노출 (상세보기 모드)
     renderChoropleth();
+    autoEnableDetailLayers();
     flyToBounds(featureBounds(ft), 11, 0.05);
     showMapInfo(ft.properties);
   });
@@ -1470,6 +1545,7 @@ function initMap() {
     curSidoFilter = sido; highlightSggCd = cd;
     regionReset.style.display = ''; showGridToggle(true);
     renderChoropleth();
+    autoEnableDetailLayers();
     flyToBounds(featureBounds(ft), 11, 0.05);
     showMapInfo(ft.properties);
   }
@@ -1572,12 +1648,23 @@ function updateMapLegend() {
   const div = document.getElementById('map-legend');
   if (!div) return;
   if (gridLayerOn) {
-    div.innerHTML = `<div class="leg-title">충족 점수 (1~20)</div>
-      <div style="display:flex;height:11px;border-radius:3px;overflow:hidden;margin-bottom:4px">${
-        [1,4,7,10,13,16,20].map(s => `<div style="flex:1;background:${GRID_SCALE(s).hex()}"></div>`).join('')
-      }</div>
-      <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--ink-2)"><span>1</span><span>10</span><span>20</span></div>
-      <div style="font-size:.66rem;color:var(--ink-3);margin-top:4px">0점(전부 미충족) 격자는 표시 안 함</div>` + overlayLegendHtml();
+    let gl;
+    if (gridColorMode === 'pop') {
+      gl = `<div class="leg-title">격자 인구 (명)</div>
+        <div style="display:flex;height:11px;border-radius:3px;overflow:hidden;margin-bottom:4px">${
+          [0,.2,.4,.6,.8,1].map(t => `<div style="flex:1;background:${POP_SCALE(t).hex()}"></div>`).join('')
+        }</div>
+        <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--ink-2)"><span>0</span><span>${Math.round(_gridPopMax/2).toLocaleString()}</span><span>${Math.round(_gridPopMax).toLocaleString()}+</span></div>
+        <div style="font-size:.66rem;color:var(--ink-3);margin-top:4px">회색 = 인구 0 격자</div>`;
+    } else {
+      gl = `<div class="leg-title">충족 점수 (1~20)</div>
+        <div style="display:flex;height:11px;border-radius:3px;overflow:hidden;margin-bottom:4px">${
+          [1,4,7,10,13,16,20].map(s => `<div style="flex:1;background:${GRID_SCALE(s).hex()}"></div>`).join('')
+        }</div>
+        <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--ink-2)"><span>1</span><span>10</span><span>20</span></div>
+        <div style="font-size:.66rem;color:var(--ink-3);margin-top:4px">0점(전부 미충족) 격자는 표시 안 함</div>`;
+    }
+    div.innerHTML = gl + overlayLegendHtml();
     return;
   }
   const metricLabel = METRIC_DEFS.find(m => m.key === curMetric)?.label || curMetric;
@@ -2471,7 +2558,7 @@ window.addEventListener('DOMContentLoaded', function() {
         <li>T점수는 <strong>해당 연도 전국 분포 안에서의 상대 표준화</strong>입니다. 연도 간 점수 차이는 시설의 절대적 증감이 아니라 <strong>전국 내 상대적 위치의 변화</strong>를 뜻합니다.</li>
         <li>따라서 모든 Δ 표시에는 <strong>순위 변화를 병기</strong>해 상대적 이동을 함께 보여줍니다.</li>
         <li>듀얼 맵의 색상 등급은 <strong>두 연도 통합 분포 기준</strong>으로 계산해 좌우 지도가 같은 잣대로 비교됩니다.</li>
-        <li>지도 탭의 격자(국토생활인프라 분석 결과)는 최신 시점 기준이며 최신연도 지도에만 표시됩니다.</li>
+        <li>지도 탭 <strong>상세보기 모드</strong>(단일 최신연도 지도)에서 시군구를 선택하면 500m 격자(충족점수·격자 인구)와 서비스권역 인구비율 패널이 자동 표시되고, 시설 POI를 on/off 할 수 있습니다. 격자·인구 데이터는 최신 시점 기준입니다.</li>
       </ul>
     </div>
     <div class="modal-foot">
