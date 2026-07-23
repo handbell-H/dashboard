@@ -251,7 +251,8 @@ body { background: var(--bg); color: var(--ink); margin: 0;
 #map-grid-detail, #map-svc-detail { display: none; background: var(--surface); border: 1px solid var(--line);
               border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px 12px 22px;
               font-size: .72rem; width: 252px; flex: 0 1 auto; min-height: 0; overflow-y: auto; }
-#map-svc-detail { padding-bottom: 10px; }
+#map-svc-detail { padding-bottom: 10px; pointer-events: auto; }
+.svc-row:hover { background: var(--soft); }
 /* 지역 상세 하단 시트 (슬라이드업 팝업) */
 .map-sheet { position: absolute; left: 12px; right: 12px; bottom: 0; z-index: 5;
              background: var(--surface); border: 1px solid var(--line);
@@ -942,38 +943,54 @@ function facColorRgb(code) {
 async function refreshOverlayLayers() {
   if (highlightSggCd != null && (poiOn || svcOn)) {
     const jobs = [];
-    if (poiOn) [Y1, Y2].forEach(y => jobs.push(loadLayerKey(`poi_${layerFac}_${y}`).catch(() => null)));
+    // 서비스권역도 반경 원을 그리려면 시설 좌표(POI)가 필요
+    [Y1, Y2].forEach(y => jobs.push(loadLayerKey(`poi_${layerFac}_${y}`).catch(() => null)));
     if (svcOn) jobs.push(loadLayerKey('svc_ratios').catch(() => null));
     await Promise.all(jobs);
   }
   renderChoropleth();
 }
 
-// 서비스권역 인구비율 패널 (시설 20종 × 연도쌍)
+// 선택 시설의 서비스권역 반경(m) — svc_ratios label 의 "(1.0km)" 등에서 파싱
+function svcRadiusM(year) {
+  const S = LAYER_CACHE['svc_ratios'];
+  const meta = S && S[year] && S[year][layerFac];
+  if (!meta) return 1000;
+  const m = (meta.label || '').match(/\(([\d.]+)\s*km\)/);
+  return m ? parseFloat(m[1]) * 1000 : 1000;
+}
+
+// 서비스권역 인구비율 패널 — 시설별 미니 바(Y1·Y2) + 행 클릭으로 시설 선택
 function updateSvcPanel() {
   const div = document.getElementById('map-svc-detail');
   if (!div) return;
   const S = LAYER_CACHE['svc_ratios'];
   if (!svcOn || highlightSggCd == null || !S) { div.style.display = 'none'; div.innerHTML = ''; return; }
   const cd = String(highlightSggCd);
-  let html = `<div class="leg-title" style="margin-bottom:6px">서비스권역 내 인구비율 (%)</div>
-    <table style="width:100%;border-collapse:collapse;font-size:.7rem;line-height:1.9">
-    <thead><tr style="color:var(--ink-3)"><th style="text-align:left">시설</th><th>${Y1}</th><th>${Y2}</th><th>Δ</th></tr></thead><tbody>`;
+  const selMeta = (S[Y2] && S[Y2][layerFac]) || (S[Y1] && S[Y1][layerFac]) || {};
+  let html = `<div class="leg-title" style="margin-bottom:2px">서비스권역 내 인구비율 (%)</div>
+    <div style="font-size:.64rem;color:var(--ink-3);margin-bottom:7px;line-height:1.5">
+      시설 반경 안에 사는 <b>대상인구 비율</b>.<br>지도의 <span style="color:#059669">초록 원</span> = 선택 시설의 권역.<br>행을 클릭하면 그 시설로 전환.</div>`;
   SECTOR_ORDER.forEach(sk => {
     FACILITIES.filter(f => f[2] === sk).forEach(f => {
       const e1 = S[Y1] && S[Y1][f[0]], e2 = S[Y2] && S[Y2][f[0]];
       const r1 = e1 ? e1.rows[cd] : null, r2 = e2 ? e2.rows[cd] : null;
       const d = (r1 != null && r2 != null) ? r2 - r1 : null;
       const label = (e2 || e1 || {}).label || '';
-      html += `<tr title="${label}">
-        <td style="text-align:left;white-space:nowrap"><span style="color:${SEC[sk].color}">●</span> ${f[1]}</td>
-        <td style="text-align:center;color:var(--ink-2)">${r1 ?? '-'}</td>
-        <td style="text-align:center;font-weight:700">${r2 ?? '-'}</td>
-        <td style="text-align:center">${d == null ? '-' : deltaHtml(d)}</td></tr>`;
+      const sel = f[0] === layerFac;
+      const bar = (v, color, op) => `<div style="height:5px;border-radius:3px;background:var(--line-2);margin-top:2px">
+        <div style="height:100%;width:${v == null ? 0 : Math.min(100, Math.max(0, v))}%;border-radius:3px;background:${color};opacity:${op}"></div></div>`;
+      html += `<div class="svc-row" data-fac="${f[0]}" title="${label}"
+        style="padding:5px 6px;margin:0 -6px;border-radius:6px;cursor:pointer;${sel ? 'background:var(--accent-sb);outline:1px solid var(--accent-bd);' : ''}">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px">
+          <span style="white-space:nowrap;font-weight:${sel ? 700 : 400}"><span style="color:${SEC[sk].color}">●</span> ${f[1]}</span>
+          <span style="white-space:nowrap;font-size:.68rem"><span style="color:var(--ink-3)">${r1 ?? '-'}</span> → <b>${r2 ?? '-'}</b> ${d == null ? '' : deltaHtml(d)}</span>
+        </div>
+        ${bar(r1, '#94A3B8', .55)}
+        ${bar(r2, SEC[sk].color, .9)}
+      </div>`;
     });
   });
-  html += `</tbody></table>
-    <div style="font-size:.64rem;color:var(--ink-3);margin-top:5px">기준 반경·대상 인구는 시설별 상이 — 행에 마우스를 올리면 표시</div>`;
   div.innerHTML = html;
   div.style.display = 'block';
 }
@@ -1100,8 +1117,24 @@ function buildMapLayers(year) {
     }));
   }
 
-  // ── 시설 POI (연도별 데이터 → 해당 연도 지도) ──
-  if (poiOn && highlightSggCd != null) {
+  // ── 서비스권역 반경 원 (선택 시설 POI 주변, 연도별) ──
+  if (svcOn && highlightSggCd != null) {
+    const pts = LAYER_CACHE[`poi_${layerFac}_${year}`];
+    const arr = (pts && pts[String(highlightSggCd)]) || [];
+    const radM = svcRadiusM(year);
+    layers.push(new deck.ScatterplotLayer({
+      id: `svc-radius-${year}`,
+      data: arr, getPosition: d => d,
+      getRadius: radM, radiusUnits: 'meters',
+      getFillColor: [16, 185, 129, 34],
+      stroked: true, getLineColor: [5, 150, 105, 130], lineWidthMinPixels: 1,
+      pickable: false,
+      updateTriggers: { getPosition: [layerFac, highlightSggCd], getRadius: [layerFac] }
+    }));
+  }
+
+  // ── 시설 POI 점 (POI 켬 또는 서비스권역 켬 → 시설 위치 필요) ──
+  if ((poiOn || svcOn) && highlightSggCd != null) {
     const pts = LAYER_CACHE[`poi_${layerFac}_${year}`];
     const arr = (pts && pts[String(highlightSggCd)]) || [];
     const col = facColorRgb(layerFac);
@@ -1257,7 +1290,7 @@ function initMap() {
   function updateLayerChipUI() {
     chipStyle(poiBtn, poiOn);
     chipStyle(svcBtn, svcOn);
-    facSel.style.display = poiOn ? '' : 'none';   // 시설 선택은 POI 전용
+    facSel.style.display = (poiOn || svcOn) ? '' : 'none';   // POI·서비스권역 공용 시설 선택
   }
   const gridInfoWrap = document.getElementById('grid-info-wrap');
   function showGridToggle(on) {
@@ -1356,6 +1389,14 @@ function initMap() {
   legendDiv.className = 'map-legend'; legendDiv.id = 'map-legend';
   const svcDetailDiv = document.createElement('div');
   svcDetailDiv.id = 'map-svc-detail';
+  svcDetailDiv.addEventListener('click', e => {
+    const row = e.target.closest('.svc-row');
+    if (!row || row.dataset.fac === layerFac) return;
+    layerFac = row.dataset.fac;
+    const sel = document.getElementById('lyr-fac-sel');
+    if (sel) sel.value = layerFac;
+    refreshOverlayLayers();
+  });
   const gridDetailDiv = document.createElement('div');
   gridDetailDiv.id = 'map-grid-detail';
   overlayRight.appendChild(legendDiv);
@@ -1420,13 +1461,17 @@ function renderChoropleth() {
   updateSvcPanel();
 }
 
-// POI 레이어 범례 블록 (켜져 있을 때만; 서비스권역은 별도 패널)
+// POI·서비스권역 범례 블록 (켜져 있을 때만; 비율 수치는 별도 패널)
 function overlayLegendHtml() {
-  if (!poiOn || highlightSggCd == null) return '';
+  if ((!poiOn && !svcOn) || highlightSggCd == null) return '';
   const e = facEntry(layerFac);
-  return `<div style="border-top:1px solid var(--line);margin-top:7px;padding-top:6px">
-    <div class="leg-row"><div class="leg-dot" style="background:${SEC[e[2]].color};border-radius:50%"></div><span>${e[1]} POI (좌 ${Y1} · 우 ${Y2})</span></div>
-  </div>`;
+  let html = `<div style="border-top:1px solid var(--line);margin-top:7px;padding-top:6px">
+    <div class="leg-row"><div class="leg-dot" style="background:${SEC[e[2]].color};border-radius:50%"></div><span>${e[1]} 위치 (좌 ${Y1} · 우 ${Y2})</span></div>`;
+  if (svcOn) {
+    const km = (svcRadiusM(Y2) / 1000).toFixed(1).replace(/\.0$/, '');
+    html += `<div class="leg-row"><div class="leg-dot" style="background:rgba(16,185,129,.35);border:1px solid #059669;border-radius:50%"></div><span>서비스권역 (반경 ${km}km)</span></div>`;
+  }
+  return html + '</div>';
 }
 
 function updateMapLegend() {
