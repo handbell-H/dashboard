@@ -345,9 +345,10 @@ body { background: var(--bg); color: var(--ink); margin: 0;
 .map-legend { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
               box-shadow: var(--shadow); padding: 9px 11px; font-size: .73rem; min-width: 132px;
               max-height: 300px; overflow-y: auto; }
-#map-grid-detail { display: none; background: var(--surface); border: 1px solid var(--line);
+#map-grid-detail, #map-svc-detail { display: none; background: var(--surface); border: 1px solid var(--line);
               border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px 12px 22px;
               font-size: .72rem; width: 252px; flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+#map-svc-detail { padding-bottom: 10px; }
 /* 지역 상세 하단 시트 (슬라이드업 팝업) */
 .map-sheet { position: absolute; left: 12px; right: 12px; bottom: 0; z-index: 5;
              background: var(--surface); border: 1px solid var(--line);
@@ -532,7 +533,13 @@ select.form-select-sm { font-size: .82rem; }
           <select id="map-sido-sel" class="form-select form-select-sm" style="width:auto;min-width:130px"><option value="">시도 전체</option></select>
           <select id="map-sgg-sel" class="form-select form-select-sm" style="width:auto;min-width:150px" disabled><option value="">시군구</option></select>
           <button id="map-region-reset" type="button" class="sido-btn" style="display:none">↺ 전체보기</button>
-          <button id="grid-toggle-btn" type="button" class="sido-btn" style="display:none;margin-left:auto">📊 국토생활인프라 분석 결과 보기</button>
+          <span id="layer-chips" style="display:none;align-items:center;gap:6px;flex-wrap:wrap;margin-left:auto">
+            <span style="font-size:.72rem;color:var(--ink-2);font-weight:700">레이어</span>
+            <button id="lyr-poi-btn" type="button" class="sido-btn">📍 시설 POI</button>
+            <button id="lyr-svc-btn" type="button" class="sido-btn">👥 서비스권역 인구</button>
+            <select id="lyr-fac-sel" class="form-select form-select-sm" style="width:auto;display:none"></select>
+          </span>
+          <button id="grid-toggle-btn" type="button" class="sido-btn" style="display:none">📊 충족격자</button>
           <span id="grid-info-wrap" class="info-hint" style="display:none">
             <button id="grid-info-btn" type="button" title="시설별 기준 및 산출 방식" style="width:26px;height:26px;border-radius:50%;border:1.5px solid var(--accent-bd);background:var(--accent-sb);color:var(--accent);font-size:.78rem;font-weight:800;cursor:pointer;line-height:1;padding:0;flex-shrink:0">ⓘ</button>
             <span class="info-hint-pop">
@@ -996,6 +1003,74 @@ const FACILITIES = [
 ];
 const SECTOR_ORDER = ['edu','care','med','safe','cult'];
 const GRID_SCALE = chroma.scale(['#d73027','#fdae61','#fee08b','#a6d96a','#1a9850']).domain([1, 20]); // 1빨강~20초록
+
+// ── 온디맨드 오버레이 레이어 (POI · 서비스권역 인구) ─────────────────────────
+// layers/{kind}_{fac}_{year}.js 파일을 시설·연도 조합별로 lazy-load 한다.
+let poiOn = false, svcOn = false;
+let layerFac = 'daycar';   // 선택 시설 코드
+const LAYER_CACHE = {};
+const _layerWaiters = {};
+window.__LAYER = (k, d) => {
+  LAYER_CACHE[k] = d;
+  (_layerWaiters[k] || []).forEach(fn => fn(d));
+  delete _layerWaiters[k];
+};
+function loadLayerKey(k) {
+  if (LAYER_CACHE[k]) return Promise.resolve(LAYER_CACHE[k]);
+  return new Promise((resolve, reject) => {
+    (_layerWaiters[k] || (_layerWaiters[k] = [])).push(resolve);
+    if (_layerWaiters[k].length > 1) return;   // 이미 로딩 중
+    const s = document.createElement('script');
+    s.src = 'layers/' + k + '.js';
+    s.onerror = () => { delete _layerWaiters[k]; reject(new Error('레이어 로드 실패: ' + k)); };
+    document.head.appendChild(s);
+  });
+}
+function facEntry(code) { return FACILITIES.find(f => f[0] === code); }
+function facColorRgb(code) {
+  const e = facEntry(code);
+  const c = chroma(SEC[e ? e[2] : 'edu'].color).rgb();
+  return [c[0], c[1], c[2]];
+}
+// 켜진 레이어에 필요한 파일들을 로드한 뒤 지도 재렌더
+async function refreshOverlayLayers() {
+  if (highlightSggCd != null && (poiOn || svcOn)) {
+    const jobs = [];
+    if (poiOn) [Y1, Y2].forEach(y => jobs.push(loadLayerKey(`poi_${layerFac}_${y}`).catch(() => null)));
+    if (svcOn) jobs.push(loadLayerKey('svc_ratios').catch(() => null));
+    await Promise.all(jobs);
+  }
+  renderChoropleth();
+}
+
+// 서비스권역 인구비율 패널 (시설 20종 × 연도쌍)
+function updateSvcPanel() {
+  const div = document.getElementById('map-svc-detail');
+  if (!div) return;
+  const S = LAYER_CACHE['svc_ratios'];
+  if (!svcOn || highlightSggCd == null || !S) { div.style.display = 'none'; div.innerHTML = ''; return; }
+  const cd = String(highlightSggCd);
+  let html = `<div class="leg-title" style="margin-bottom:6px">서비스권역 내 인구비율 (%)</div>
+    <table style="width:100%;border-collapse:collapse;font-size:.7rem;line-height:1.9">
+    <thead><tr style="color:var(--ink-3)"><th style="text-align:left">시설</th><th>${Y1}</th><th>${Y2}</th><th>Δ</th></tr></thead><tbody>`;
+  SECTOR_ORDER.forEach(sk => {
+    FACILITIES.filter(f => f[2] === sk).forEach(f => {
+      const e1 = S[Y1] && S[Y1][f[0]], e2 = S[Y2] && S[Y2][f[0]];
+      const r1 = e1 ? e1.rows[cd] : null, r2 = e2 ? e2.rows[cd] : null;
+      const d = (r1 != null && r2 != null) ? r2 - r1 : null;
+      const label = (e2 || e1 || {}).label || '';
+      html += `<tr title="${label}">
+        <td style="text-align:left;white-space:nowrap"><span style="color:${SEC[sk].color}">●</span> ${f[1]}</td>
+        <td style="text-align:center;color:var(--ink-2)">${r1 ?? '-'}</td>
+        <td style="text-align:center;font-weight:700">${r2 ?? '-'}</td>
+        <td style="text-align:center">${d == null ? '-' : deltaHtml(d)}</td></tr>`;
+    });
+  });
+  html += `</tbody></table>
+    <div style="font-size:.64rem;color:var(--ink-3);margin-top:5px">기준 반경·대상 인구는 시설별 상이 — 행에 마우스를 올리면 표시</div>`;
+  div.innerHTML = html;
+  div.style.display = 'block';
+}
 function popcount(m) { let c = 0; while (m) { c += m & 1; m >>>= 1; } return c; }
 
 function getDecileGrade(v) {
@@ -1118,6 +1193,22 @@ function buildMapLayers(year) {
       pickable: true, updateTriggers: { getFillColor: [highlightSggCd] }
     }));
   }
+
+  // ── 시설 POI (연도별 데이터 → 해당 연도 지도) ──
+  if (poiOn && highlightSggCd != null) {
+    const pts = LAYER_CACHE[`poi_${layerFac}_${year}`];
+    const arr = (pts && pts[String(highlightSggCd)]) || [];
+    const col = facColorRgb(layerFac);
+    layers.push(new deck.ScatterplotLayer({
+      id: `poi-${year}`,
+      data: arr, getPosition: d => d,
+      getRadius: 45, radiusUnits: 'meters', radiusMinPixels: 3.5, radiusMaxPixels: 9,
+      getFillColor: [col[0], col[1], col[2], 235],
+      stroked: true, getLineColor: [255, 255, 255, 230], lineWidthMinPixels: 1,
+      pickable: true,
+      updateTriggers: { getFillColor: [layerFac], getPosition: [layerFac, highlightSggCd] }
+    }));
+  }
   return layers;
 }
 
@@ -1154,6 +1245,10 @@ function mapTooltipFor(year) {
   return ({ object }) => {
     if (!object) return null;
     if (object.mask !== undefined) return null; // 격자 정보는 범례 하단 패널(updateGridDetail)에 표시
+    if (Array.isArray(object)) {                // POI 점
+      const e = facEntry(layerFac);
+      return { html: `<b>${e ? e[1] : layerFac}</b> (${year}년 시설 위치)`, className: 'deck-tooltip' };
+    }
     if (!object.properties) return null;
     const p = object.properties;
     const ml = METRIC_DEFS.find(m => m.key === curMetric)?.label || curMetric;
@@ -1228,24 +1323,61 @@ function initMap() {
   sidoSel.innerHTML = '<option value="">시도 전체</option>' +
     Object.keys(hier).sort((a, b) => a.localeCompare(b, 'ko')).map(s => `<option value="${s}">${s}</option>`).join('');
 
-  // 충족격자 토글 버튼
+  // 충족격자 토글 버튼 + POI·서비스권역 레이어 칩
   const gridToggleBtn = document.getElementById('grid-toggle-btn');
   const gridOpacityCtrl = document.getElementById('grid-opacity-ctrl');
   const gridOpacitySlider = document.getElementById('grid-opacity-slider');
+  const layerChips = document.getElementById('layer-chips');
+  const poiBtn = document.getElementById('lyr-poi-btn');
+  const svcBtn = document.getElementById('lyr-svc-btn');
+  const facSel = document.getElementById('lyr-fac-sel');
+  facSel.innerHTML = SECTOR_ORDER.map(sk =>
+    `<optgroup label="${SEC[sk].label}">${FACILITIES.filter(f => f[2] === sk)
+      .map(f => `<option value="${f[0]}">${f[1]}</option>`).join('')}</optgroup>`).join('');
+  facSel.value = layerFac;
+
+  function chipStyle(btn, on) {
+    btn.style.background  = on ? 'var(--accent-sb)' : '';
+    btn.style.color       = on ? 'var(--accent)' : '';
+    btn.style.borderColor = on ? 'var(--accent-bd)' : '';
+    btn.style.fontWeight  = on ? '700' : '';
+  }
   function updateGridBtnUI() {
-    gridToggleBtn.textContent = gridLayerOn ? '📊 분석 결과 끄기' : '📊 국토생활인프라 분석 결과 보기';
-    gridToggleBtn.style.background  = gridLayerOn ? 'var(--accent-sb)' : '';
-    gridToggleBtn.style.color       = gridLayerOn ? 'var(--accent)' : '';
-    gridToggleBtn.style.borderColor = gridLayerOn ? 'var(--accent-bd)' : '';
-    gridToggleBtn.style.fontWeight  = gridLayerOn ? '700' : '';
-    gridOpacityCtrl.style.display   = gridLayerOn ? 'inline-flex' : 'none';
+    gridToggleBtn.textContent = '📊 충족격자';
+    chipStyle(gridToggleBtn, gridLayerOn);
+    gridOpacityCtrl.style.display = gridLayerOn ? 'inline-flex' : 'none';
     if (!gridLayerOn) updateGridDetail(null);
   }
+  function updateLayerChipUI() {
+    chipStyle(poiBtn, poiOn);
+    chipStyle(svcBtn, svcOn);
+    facSel.style.display = poiOn ? '' : 'none';   // 시설 선택은 POI 전용
+  }
   const gridInfoWrap = document.getElementById('grid-info-wrap');
-  function showGridToggle(on) { if (!on) { gridLayerOn = false; updateGridBtnUI(); } gridToggleBtn.style.display = on ? '' : 'none'; gridInfoWrap.style.display = on ? 'inline-flex' : 'none'; }
+  function showGridToggle(on) {
+    if (!on) {
+      gridLayerOn = false; updateGridBtnUI();
+      poiOn = false; svcOn = false; updateLayerChipUI();
+    }
+    gridToggleBtn.style.display = on ? '' : 'none';
+    gridInfoWrap.style.display = on ? 'inline-flex' : 'none';
+    layerChips.style.display = on ? 'inline-flex' : 'none';
+  }
   gridToggleBtn.addEventListener('click', () => {
     if (highlightSggCd == null) return;
     gridLayerOn = !gridLayerOn; updateGridBtnUI(); renderChoropleth();
+  });
+  poiBtn.addEventListener('click', () => {
+    if (highlightSggCd == null) return;
+    poiOn = !poiOn; updateLayerChipUI(); refreshOverlayLayers();
+  });
+  svcBtn.addEventListener('click', () => {
+    if (highlightSggCd == null) return;
+    svcOn = !svcOn; updateLayerChipUI(); refreshOverlayLayers();
+  });
+  facSel.addEventListener('change', () => {
+    layerFac = facSel.value;
+    refreshOverlayLayers();
   });
   gridOpacitySlider.addEventListener('input', () => {
     gridOpacity = +gridOpacitySlider.value / 100;
@@ -1316,9 +1448,12 @@ function initMap() {
   overlayRight.className = 'map-overlay-right';
   const legendDiv = document.createElement('div');
   legendDiv.className = 'map-legend'; legendDiv.id = 'map-legend';
+  const svcDetailDiv = document.createElement('div');
+  svcDetailDiv.id = 'map-svc-detail';
   const gridDetailDiv = document.createElement('div');
   gridDetailDiv.id = 'map-grid-detail';
   overlayRight.appendChild(legendDiv);
+  overlayRight.appendChild(svcDetailDiv);
   overlayRight.appendChild(gridDetailDiv);
   document.getElementById('map').appendChild(overlayRight);
 
@@ -1376,6 +1511,16 @@ function renderChoropleth() {
   deckMap.setProps({ layers: buildMapLayers(Y2) });
   if (deckMap1) deckMap1.setProps({ layers: buildMapLayers(Y1) });
   updateMapLegend();
+  updateSvcPanel();
+}
+
+// POI 레이어 범례 블록 (켜져 있을 때만; 서비스권역은 별도 패널)
+function overlayLegendHtml() {
+  if (!poiOn || highlightSggCd == null) return '';
+  const e = facEntry(layerFac);
+  return `<div style="border-top:1px solid var(--line);margin-top:7px;padding-top:6px">
+    <div class="leg-row"><div class="leg-dot" style="background:${SEC[e[2]].color};border-radius:50%"></div><span>${e[1]} POI (좌 ${Y1} · 우 ${Y2})</span></div>
+  </div>`;
 }
 
 function updateMapLegend() {
@@ -1387,7 +1532,7 @@ function updateMapLegend() {
         [1,4,7,10,13,16,20].map(s => `<div style="flex:1;background:${GRID_SCALE(s).hex()}"></div>`).join('')
       }</div>
       <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--ink-2)"><span>1</span><span>10</span><span>20</span></div>
-      <div style="font-size:.66rem;color:var(--ink-3);margin-top:4px">0점(전부 미충족) 격자는 표시 안 함</div>`;
+      <div style="font-size:.66rem;color:var(--ink-3);margin-top:4px">0점(전부 미충족) 격자는 표시 안 함</div>` + overlayLegendHtml();
     return;
   }
   const metricLabel = METRIC_DEFS.find(m => m.key === curMetric)?.label || curMetric;
@@ -1411,7 +1556,7 @@ function updateMapLegend() {
       html += `<div class="leg-row"><div class="leg-dot" style="background:${_colorScale(v).hex()}"></div><span>${fAuto(v, curMetric)}</span></div>`;
     }
   }
-  div.innerHTML = html;
+  div.innerHTML = html + overlayLegendHtml();
 }
 
 function showMapInfo(p) {
