@@ -1306,11 +1306,56 @@ function updateGridDetail(d) {
   div.style.display = 'block';
 }
 
+// ── 격자 hover 툴팁: 같은 격자의 두 연도 값을 커서 옆에 나란히 표시 ──────────
+// 좌표(소수 5자리) 키로 연도 간 같은 격자를 매칭
+let _gridIdx = {};   // {year: {'lon,lat': entry([lon,lat,mask,pop])}}
+function buildGridIdx() {
+  _gridIdx = {};
+  if (highlightSggCd == null) return;
+  const cd = String(highlightSggCd);
+  [Y1, Y2].forEach(y => {
+    const AG = LAYER_CACHE['access_' + y];
+    const m = {};
+    ((AG && AG[cd]) || []).forEach(a => { m[a[0] + ',' + a[1]] = a; });
+    _gridIdx[y] = m;
+  });
+}
+function gridTooltipHtml(d) {
+  const key = d.position[0] + ',' + d.position[1];
+  const e1 = (_gridIdx[Y1] || {})[key];
+  const e2 = (_gridIdx[Y2] || {})[key];
+  const s1 = e1 ? popcount(e1[2]) : null, s2 = e2 ? popcount(e2[2]) : null;
+  const p1 = e1 ? (e1[3] || 0) : null,   p2 = e2 ? (e2[3] || 0) : null;
+  const mk = (m, bit) => m == null ? '<span style="color:#94A3B8">·</span>'
+    : ((m >> bit) & 1) ? '<span style="color:#16A34A;font-weight:700">✓</span>'
+                       : '<span style="color:#CBD5E1">✕</span>';
+  let secRows = '';
+  SECTOR_ORDER.forEach(sk => {
+    const s = SEC[sk];
+    const items = FACILITIES.map((f, bit) => f[2] !== sk ? '' :
+      `<div style="display:flex;justify-content:space-between;gap:6px;white-space:nowrap">
+        <span>${f[1]}</span>
+        <span>${mk(e1 && e1[2], bit)} ${mk(e2 && e2[2], bit)}</span>
+      </div>`).join('');
+    secRows += `<div style="margin-top:5px">
+      <div style="font-weight:700;color:${s.color};margin-bottom:1px">${s.label}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:14px">${items}</div>
+    </div>`;
+  });
+  const dScore = (s1 != null && s2 != null) ? (s2 - s1 > 0 ? ` <span style="color:#DC2626">(+${s2 - s1})</span>` : s2 - s1 < 0 ? ` <span style="color:#1D4ED8">(${s2 - s1})</span>` : '') : '';
+  return `<div style="font-size:11px;line-height:1.55;max-width:330px">
+    <div style="font-weight:700;margin-bottom:3px">500m 격자 — ${Y1} · ${Y2} 비교 <span style="font-weight:400;color:#94A3B8">(✓✓ = ${Y1}·${Y2} 순)</span></div>
+    <div>충족점수: <b>${s1 ?? '-'}</b> → <b>${s2 ?? '-'}</b>/20${dScore}</div>
+    <div>격자 인구: <b>${p1 != null ? p1.toLocaleString() : '-'}</b> → <b>${p2 != null ? p2.toLocaleString() : '-'}</b>명</div>
+    ${secRows}
+  </div>`;
+}
+
 // 연도별 툴팁: 해당 연도 값 + 반대 연도 값 + Δ 병기
 function mapTooltipFor(year) {
   return ({ object }) => {
     if (!object) return null;
-    if (object.mask !== undefined) return null; // 격자 정보는 범례 하단 패널(updateGridDetail)에 표시
+    if (object.mask !== undefined) return { html: gridTooltipHtml(object), className: 'deck-tooltip' };
     if (Array.isArray(object)) {                // POI 점
       const e = facEntry(layerFac);
       return { html: `<b>${e ? e[1] : layerFac}</b> (${year}년 시설 위치)`, className: 'deck-tooltip' };
@@ -1463,6 +1508,8 @@ function initMap() {
     if (m === mapMode) return;
     mapMode = m;
     modeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.m === m));
+    document.querySelector('.map-dual').classList.toggle('single', m === 'detail');
+    document.getElementById('map-chip-y2').textContent = Y2 + '년' + (m === 'detail' ? ' · 상세보기' : '');
     if (m === 'compare') {
       showGridToggle(false);
       renderChoropleth();
@@ -1570,11 +1617,8 @@ function initMap() {
     if (sel) sel.value = layerFac;
     refreshOverlayLayers();
   });
-  const gridDetailDiv = document.createElement('div');
-  gridDetailDiv.id = 'map-grid-detail';
   overlayRight.appendChild(legendDiv);
   overlayRight.appendChild(svcDetailDiv);
-  overlayRight.appendChild(gridDetailDiv);
   document.getElementById('map').appendChild(overlayRight);
 
   // 지역 상세 하단 시트
@@ -1604,7 +1648,6 @@ function initMap() {
     controller: true,
     layers: [],
     getTooltip: mapTooltipFor(Y2),
-    onHover: info => updateGridDetail(info && info.object && info.object.mask !== undefined ? info.object : null),
     onViewStateChange: syncedView(() => deckMap, () => deckMap1),
     onClick: info => {
       if (info && info.object && info.object.properties) pickSgg(info.object);
@@ -1616,7 +1659,6 @@ function initMap() {
     controller: true,
     layers: [],
     getTooltip: mapTooltipFor(Y1),
-    onHover: info => updateGridDetail(info && info.object && info.object.mask !== undefined ? info.object : null),
     onViewStateChange: syncedView(() => deckMap1, () => deckMap),
     onClick: info => {
       if (info && info.object && info.object.properties) pickSgg(info.object);
@@ -1639,6 +1681,7 @@ function renderChoropleth() {
     });
     pops.sort((x, y) => x - y);
     _gridPopMax = pops.length ? Math.max(1, pops[Math.floor(pops.length * 0.95)]) : 1;
+    buildGridIdx();   // hover 툴팁용 연도 간 격자 매칭 색인
   }
   deckMap.setProps({ layers: buildMapLayers(Y2) });
   if (deckMap1) deckMap1.setProps({ layers: buildMapLayers(Y1) });
@@ -1677,7 +1720,7 @@ function updateMapLegend() {
           [1,4,7,10,13,16,20].map(s => `<div style="flex:1;background:${GRID_SCALE(s).hex()}"></div>`).join('')
         }</div>
         <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--ink-2)"><span>1</span><span>10</span><span>20</span></div>
-        <div style="font-size:.66rem;color:var(--ink-3);margin-top:4px">좌 ${Y1}년 · 우 ${Y2}년 격자 (0점·무인구 격자는 제외)</div>`;
+        <div style="font-size:.66rem;color:var(--ink-3);margin-top:4px">${Y2}년 격자 · 마우스를 올리면 ${Y1}·${Y2} 비교 표시</div>`;
     }
     div.innerHTML = gl + overlayLegendHtml();
     return;
