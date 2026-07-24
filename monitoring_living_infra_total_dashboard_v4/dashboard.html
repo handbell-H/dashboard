@@ -444,6 +444,10 @@ select.form-select-sm { font-size: .82rem; }
             <button data-m="compare" class="active">🆚 연도 비교</button>
             <button data-m="detail">🔎 상세보기</button>
           </div>
+          <span id="detail-year-ctrl" style="display:none;align-items:center;gap:6px">
+            <span class="year-seg-local" id="detail-map-year-seg" style="padding:2px"></span>
+            <button id="change-view-btn" type="button" class="sido-btn">🔁 변화보기</button>
+          </span>
           <span style="font-size:.75rem;color:var(--ink-2);font-weight:700">📍 지역 선택</span>
           <select id="map-sido-sel" class="form-select form-select-sm" style="width:auto;min-width:130px"><option value="">시도 전체</option></select>
           <select id="map-sgg-sel" class="form-select form-select-sm" style="width:auto;min-width:150px" disabled><option value="">시군구</option></select>
@@ -916,7 +920,9 @@ const VWORLD_KEY = '6D2A7A4B-CB1D-3574-8FD8-331C8254D8F9';
 let _colorScale = null, _qBreaks = [], _mn = 0, _mx = 1; // 색상 분류 상태
 
 // ── 충족격자(access) ─────────────────────────────────────────────────────────
-let mapMode = 'compare';        // 'compare'(듀얼 연도 비교) | 'detail'(단일 최신연도 상세)
+let mapMode = 'compare';        // 'compare'(듀얼 연도 비교) | 'detail'(단일 시점 상세)
+let detailMapYear = Y2;         // 상세보기 표시 시점
+let changeView = false;         // 상세보기 변화보기(연도 비교) 토글
 let gridLayerOn = false;
 let gridOpacity = 0.9;
 let gridColorMode = 'score';    // 'score'(충족점수) | 'pop'(격자 인구)
@@ -992,27 +998,34 @@ function updateSvcPanel() {
   const S = LAYER_CACHE['svc_ratios'];
   if (!svcOn || highlightSggCd == null || !S) { div.style.display = 'none'; div.innerHTML = ''; return; }
   const cd = String(highlightSggCd);
-  const selMeta = (S[Y2] && S[Y2][layerFac]) || (S[Y1] && S[Y1][layerFac]) || {};
-  let html = `<div class="leg-title" style="margin-bottom:2px">서비스권역 내 인구비율 (%)</div>
+  const singleHdr = mapMode === 'detail' && !changeView ? ` — ${detailMapYear}년` : ` — ${Y1}→${Y2}`;
+  let html = `<div class="leg-title" style="margin-bottom:2px">서비스권역 내 인구비율 (%)${singleHdr}</div>
     <div style="font-size:.64rem;color:var(--ink-3);margin-bottom:7px;line-height:1.5">
       시설 반경 안에 사는 <b>대상인구 비율</b>.<br>지도의 <span style="color:#059669">초록 원</span> = 선택 시설의 권역.<br>행을 클릭하면 그 시설로 전환.</div>`;
   SECTOR_ORDER.forEach(sk => {
     FACILITIES.filter(f => f[2] === sk).forEach(f => {
       const e1 = S[Y1] && S[Y1][f[0]], e2 = S[Y2] && S[Y2][f[0]];
       const r1 = e1 ? e1.rows[cd] : null, r2 = e2 ? e2.rows[cd] : null;
-      const d = (r1 != null && r2 != null) ? r2 - r1 : null;
       const label = (e2 || e1 || {}).label || '';
       const sel = f[0] === layerFac;
       const bar = (v, color, op) => `<div style="height:5px;border-radius:3px;background:var(--line-2);margin-top:2px">
         <div style="height:100%;width:${v == null ? 0 : Math.min(100, Math.max(0, v))}%;border-radius:3px;background:${color};opacity:${op}"></div></div>`;
+      const single = mapMode === 'detail' && !changeView;
+      const ry = detailMapYear === Y1 ? r1 : r2;
+      const d = (r1 != null && r2 != null) ? r2 - r1 : null;
+      const valueHtml = single
+        ? `<b>${ry ?? '-'}</b>`
+        : `<span style="color:var(--ink-3)">${r1 ?? '-'}</span> → <b>${r2 ?? '-'}</b> ${d == null ? '' : deltaHtml(d)}`;
+      const barsHtml = single
+        ? bar(ry, SEC[sk].color, .9)
+        : bar(r1, '#94A3B8', .55) + bar(r2, SEC[sk].color, .9);
       html += `<div class="svc-row" data-fac="${f[0]}" title="${label}"
         style="padding:5px 6px;margin:0 -6px;border-radius:6px;cursor:pointer;${sel ? 'background:var(--accent-sb);outline:1px solid var(--accent-bd);' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px">
           <span style="white-space:nowrap;font-weight:${sel ? 700 : 400}"><span style="color:${SEC[sk].color}">●</span> ${f[1]}</span>
-          <span style="white-space:nowrap;font-size:.68rem"><span style="color:var(--ink-3)">${r1 ?? '-'}</span> → <b>${r2 ?? '-'}</b> ${d == null ? '' : deltaHtml(d)}</span>
+          <span style="white-space:nowrap;font-size:.68rem">${valueHtml}</span>
         </div>
-        ${bar(r1, '#94A3B8', .55)}
-        ${bar(r2, SEC[sk].color, .9)}
+        ${barsHtml}
       </div>`;
     });
   });
@@ -1227,6 +1240,29 @@ function buildGridIdx() {
   });
 }
 function gridTooltipHtml(d) {
+  // 단일 시점 모드: 해당 격자의 표시 연도 값만
+  if (mapMode === 'detail' && !changeView) {
+    const mk1 = bit => ((d.mask >> bit) & 1)
+      ? '<span style="color:#16A34A;font-weight:700">✓</span>'
+      : '<span style="color:#CBD5E1">✕</span>';
+    let secRows = '';
+    SECTOR_ORDER.forEach(sk => {
+      const s = SEC[sk];
+      const items = FACILITIES.map((f, bit) => f[2] !== sk ? '' :
+        `<div style="display:flex;justify-content:space-between;gap:6px;white-space:nowrap">
+          <span>${f[1]}</span><span>${mk1(bit)}</span>
+        </div>`).join('');
+      secRows += `<div style="margin-top:5px">
+        <div style="font-weight:700;color:${s.color};margin-bottom:1px">${s.label}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:14px">${items}</div>
+      </div>`;
+    });
+    return `<div style="font-size:11px;line-height:1.55;max-width:330px">
+      <div style="font-weight:700;margin-bottom:3px">500m 격자 (${d.year}년)</div>
+      <div>충족점수: <b>${d.score}</b>/20 · 격자 인구: <b>${(d.pop || 0).toLocaleString()}</b>명</div>
+      ${secRows}
+    </div>`;
+  }
   const key = d.position[0] + ',' + d.position[1];
   const e1 = (_gridIdx[Y1] || {})[key];
   const e2 = (_gridIdx[Y2] || {})[key];
@@ -1269,12 +1305,19 @@ function mapTooltipFor(year) {
     if (!object.properties) return null;
     const p = object.properties;
     const ml = METRIC_DEFS.find(m => m.key === curMetric)?.label || curMetric;
+    const v = valOf(year, p.sgg_cd, curMetric);
+    const gradeStr = curClassify === 'decile' && v != null ? `<br>${year} 등급: <b>${getDecileGrade(v)}등급</b>` : '';
+    // 상세보기 단일 시점: 그 연도 값만
+    if (mapMode === 'detail' && !changeView) {
+      return {
+        html: `<b>${p.sido_nm_k} ${p.sgg_nm_k}</b><br>${ml}<br>${year}: <b>${fAuto(v, curMetric)}</b>${gradeStr}`,
+        className: 'deck-tooltip'
+      };
+    }
     const other = year === Y2 ? Y1 : Y2;
-    const v  = valOf(year,  p.sgg_cd, curMetric);
     const vo = valOf(other, p.sgg_cd, curMetric);
     const d  = (v != null && vo != null) ? (year === Y2 ? v - vo : vo - v) : null;
     const dStr = d == null ? '' : `<br>Δ(${Y1}→${Y2}): <b>${(d > 0 ? '+' : '') + d.toFixed(1)}</b>`;
-    const gradeStr = curClassify === 'decile' && v != null ? `<br>${year} 등급: <b>${getDecileGrade(v)}등급</b>` : '';
     return {
       html: `<b>${p.sido_nm_k} ${p.sgg_nm_k}</b><br>${ml}<br>` +
             `${year}: <b>${fAuto(v, curMetric)}</b> · ${other}: <b>${fAuto(vo, curMetric)}</b>${dStr}${gradeStr}`,
@@ -1410,12 +1453,38 @@ function initMap() {
 
   // ── 지도 모드 전환 (연도 비교 ↔ 상세보기) ──
   const modeSeg = document.getElementById('map-mode-seg');
+  const detailYearCtrl = document.getElementById('detail-year-ctrl');
+  const detailYearSeg = document.getElementById('detail-map-year-seg');
+  const changeViewBtn = document.getElementById('change-view-btn');
+  function renderDetailYearSeg() {
+    detailYearSeg.innerHTML = YEAR_LIST.map(y =>
+      `<button class="${y === detailMapYear ? 'active' : ''}" data-y="${y}" style="padding:3px 11px;font-size:.76rem">${y}</button>`).join('');
+  }
+  function updateDetailCtrlUI() {
+    detailYearCtrl.style.display = mapMode === 'detail' ? 'inline-flex' : 'none';
+    renderDetailYearSeg();
+    chipStyle(changeViewBtn, changeView);
+    document.getElementById('map-chip-y2').textContent =
+      mapMode === 'detail' ? detailMapYear + '년 · 상세보기' + (changeView ? ' (변화보기)' : '') : Y2 + '년';
+  }
+  detailYearSeg.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b || b.dataset.y === detailMapYear) return;
+    detailMapYear = b.dataset.y;
+    updateDetailCtrlUI();
+    refreshOverlayLayers();
+  });
+  changeViewBtn.addEventListener('click', () => {
+    changeView = !changeView;
+    updateDetailCtrlUI();
+    renderChoropleth();
+  });
   function setMapMode(m) {
     if (m === mapMode) return;
     mapMode = m;
     modeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.m === m));
     document.querySelector('.map-dual').classList.toggle('single', m === 'detail');
-    document.getElementById('map-chip-y2').textContent = Y2 + '년' + (m === 'detail' ? ' · 상세보기' : '');
+    updateDetailCtrlUI();
     if (m === 'compare') {
       showGridToggle(false);
       renderChoropleth();
@@ -1553,7 +1622,7 @@ function initMap() {
     initialViewState: { ...mapViewState },
     controller: true,
     layers: [],
-    getTooltip: mapTooltipFor(Y2),
+    getTooltip: obj => mapTooltipFor(mapMode === 'detail' ? detailMapYear : Y2)(obj),
     onViewStateChange: syncedView(() => deckMap, () => deckMap1),
     onClick: info => {
       if (info && info.object && info.object.properties) pickSgg(info.object);
@@ -1589,7 +1658,7 @@ function renderChoropleth() {
     _gridPopMax = pops.length ? Math.max(1, pops[Math.floor(pops.length * 0.95)]) : 1;
     buildGridIdx();   // hover 툴팁용 연도 간 격자 매칭 색인
   }
-  deckMap.setProps({ layers: buildMapLayers(Y2) });
+  deckMap.setProps({ layers: buildMapLayers(mapMode === 'detail' ? detailMapYear : Y2) });
   if (deckMap1) deckMap1.setProps({ layers: buildMapLayers(Y1) });
   updateMapLegend();
   updateSvcPanel();
@@ -1599,8 +1668,9 @@ function renderChoropleth() {
 function overlayLegendHtml() {
   if ((!poiOn && !svcOn) || highlightSggCd == null) return '';
   const e = facEntry(layerFac);
+  const posLabel = mapMode === 'detail' ? `${e[1]} 위치 (${detailMapYear}년)` : `${e[1]} 위치 (좌 ${Y1} · 우 ${Y2})`;
   let html = `<div style="border-top:1px solid var(--line);margin-top:7px;padding-top:6px">
-    <div class="leg-row"><div class="leg-dot" style="background:${SEC[e[2]].color};border-radius:50%"></div><span>${e[1]} 위치 (좌 ${Y1} · 우 ${Y2})</span></div>`;
+    <div class="leg-row"><div class="leg-dot" style="background:${SEC[e[2]].color};border-radius:50%"></div><span>${posLabel}</span></div>`;
   if (svcOn) {
     const km = (svcRadiusM(Y2) / 1000).toFixed(1).replace(/\.0$/, '');
     html += `<div class="leg-row"><div class="leg-dot" style="background:rgba(16,185,129,.35);border:1px solid #059669;border-radius:50%"></div><span>서비스권역 (반경 ${km}km)</span></div>`;
@@ -1626,7 +1696,7 @@ function updateMapLegend() {
           [1,4,7,10,13,16,20].map(s => `<div style="flex:1;background:${GRID_SCALE(s).hex()}"></div>`).join('')
         }</div>
         <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--ink-2)"><span>1</span><span>10</span><span>20</span></div>
-        <div style="font-size:.66rem;color:var(--ink-3);margin-top:4px">${Y2}년 격자 · 마우스를 올리면 ${Y1}·${Y2} 비교 표시</div>`;
+        <div style="font-size:.66rem;color:var(--ink-3);margin-top:4px">${changeView ? `마우스를 올리면 ${Y1}·${Y2} 비교 표시` : `${detailMapYear}년 격자`}</div>`;
     }
     div.innerHTML = gl + overlayLegendHtml();
     return;
